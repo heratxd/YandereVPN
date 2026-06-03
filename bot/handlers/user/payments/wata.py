@@ -86,7 +86,7 @@ async def wata_pay_create(callback: CallbackQuery):
             f"💳 <b>Тариф:</b> {escape_html(tariff['name'])}\n"
             f"💰 <b>Сумма:</b> {int(price_rub)} ₽\n"
             f"⏳ <b>Срок:</b> {tariff['duration_days']} дней\n\n"
-            f"Отсканируйте QR-код банковским приложением или перейдите по "
+            f"Отсканируйте QR код для перехода по "
             f"<a href=\"{qr_url}\">ссылке на оплату</a>.\n\n"
             f"<i>После оплаты нажмите «✅ Я оплатил».</i>"
         )
@@ -188,7 +188,7 @@ async def renew_wata_create(callback: CallbackQuery):
             f"💳 <b>Тариф:</b> {escape_html(tariff['name'])}\n"
             f"💰 <b>Сумма:</b> {int(price_rub)} ₽\n"
             f"⏳ <b>Продление:</b> +{tariff['duration_days']} дней\n\n"
-            f"Отсканируйте QR-код банковским приложением или перейдите по "
+            f"Отсканируйте QR код для перехода по "
             f"<a href=\"{qr_url}\">ссылке на оплату</a>.\n\n"
             f"<i>После оплаты нажмите «✅ Я оплатил».</i>"
         )

@@ -33,7 +33,7 @@ def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: b
     platega_status = '✅' if platega_enabled else '❌'
     builder.row(InlineKeyboardButton(text=f'💸 Platega (СБП): {platega_status}', callback_data='admin_payments_platega'))
     cardlink_status = '✅' if cardlink_enabled else '❌'
-    builder.row(InlineKeyboardButton(text=f'🔗 Cardlink (Карта/СБП) 🌟 Рекомендованный: {cardlink_status}', callback_data='admin_payments_cardlink'))
+    builder.row(InlineKeyboardButton(text=f'🔗 Cardlink (Карта/СБП): {cardlink_status}', callback_data='admin_payments_cardlink'))
     demo_status = '✅' if demo_enabled else '❌'
     builder.row(InlineKeyboardButton(text=f'💳 Демо оплата (РФ): {demo_status}', callback_data='admin_payments_toggle_demo'))
     reset_status = '✅' if monthly_reset_enabled else '❌'

@@ -70,12 +70,19 @@ def build_key_history_block(payments: Iterable[Mapping[str, Any]]) -> str:
     for payment in payment_rows:
         date = payment.get('paid_at')[:10] if payment.get('paid_at') else '—'
         tariff = payment.get('tariff_name') or 'Тариф'
-        if payment.get('payment_type') == 'stars':
+        ptype = payment.get('payment_type')
+        if ptype == 'stars':
             amount = f"{_safe(payment.get('amount_stars') or 0)} ⭐"
-        else:
+        elif ptype == 'crypto':
             amount_val = (payment.get('amount_cents') or 0) / 100
             amount_str = f'{amount_val:g}'.replace('.', ',')
             amount = f'${_safe(amount_str)}'
+        elif ptype in ('cards', 'yookassa_qr', 'wata', 'platega', 'cardlink', 'balance'):
+            rub = payment.get('price_rub') or 0
+            rub_str = f'{rub:g}'.replace('.', ',')
+            amount = f'{_safe(rub_str)} ₽'
+        else:
+            amount = '?'
         lines.append(f"   • {_safe(date)}: {_safe(tariff)} ({amount})")
     return '\n'.join(lines)
 
