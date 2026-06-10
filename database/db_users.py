@@ -36,6 +36,7 @@ __all__ = [
     'deduct_from_balance',
     'get_user_referral_coefficient',
     'set_user_referral_coefficient',
+    'get_user_by_id',
 ]
 
 def _generate_referral_code() -> str:
@@ -627,3 +628,13 @@ def set_user_referral_coefficient(user_id: int, coefficient: float) -> bool:
         if success:
             logger.info(f"Коэффициент пользователя {user_id} установлен: {coefficient}")
         return success
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Получает пользователя по внутреннему ID.
+    """
+    with get_db() as conn:
+        cursor = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+

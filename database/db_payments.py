@@ -45,6 +45,15 @@ __all__ = [
     'get_referral_reward_type',
     'get_referral_conditions_text',
     'update_referral_setting',
+    'save_cryptobot_invoice_id',
+    'find_order_by_cryptobot_id',
+    'save_xrocket_invoice_id',
+    'find_order_by_xrocket_id',
+    'save_crystalpay_invoice_id',
+    'find_order_by_crystalpay_id',
+    'find_latest_pending_cryptobot_order_for_user',
+    'find_latest_pending_xrocket_order_for_user',
+    'find_latest_pending_crystalpay_order_for_user',
 ]
 
 def save_yookassa_payment_id(order_id: str, yookassa_payment_id: str) -> bool:
@@ -203,6 +212,90 @@ def find_order_by_cardlink_bill_id(bill_id: str) -> Optional[Dict[str, Any]]:
         row = cursor.fetchone()
         return dict(row) if row else None
 
+
+def save_cryptobot_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """
+    Сохраняет ID инвойса CryptoBot в запись ордера.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET cryptobot_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён cryptobot_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_cryptobot_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Находит ордер по ID инвойса CryptoBot.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE cryptobot_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def save_xrocket_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """
+    Сохраняет ID инвойса xRocket в запись ордера.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET xrocket_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён xrocket_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_xrocket_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Находит ордер по ID инвойса xRocket.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE xrocket_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def save_crystalpay_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """
+    Сохраняет ID инвойса CrystalPay в запись ордера.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET crystalpay_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён crystalpay_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_crystalpay_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Находит ордер по ID инвойса CrystalPay.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE crystalpay_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
 def find_latest_pending_cardlink_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
     """
     Находит последний pending-ордер типа 'cardlink' для пользователя.
@@ -229,6 +322,61 @@ def find_latest_pending_cardlink_order_for_user(user_id: int) -> Optional[Dict[s
         row = cursor.fetchone()
         return dict(row) if row else None
 
+
+def find_latest_pending_cryptobot_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Находит последний pending-ордер типа 'cryptobot' для пользователя.
+    """
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'cryptobot'
+              AND status = 'pending'
+              AND cryptobot_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_xrocket_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Находит последний pending-ордер типа 'xrocket' для пользователя.
+    """
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'xrocket'
+              AND status = 'pending'
+              AND xrocket_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_crystalpay_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Находит последний pending-ордер типа 'crystalpay' для пользователя.
+    """
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'crystalpay'
+              AND status = 'pending'
+              AND crystalpay_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
 def get_user_payments_stats(user_id: int) -> Dict[str, Any]:
     """
     Получает статистику оплат пользователя.
@@ -249,9 +397,9 @@ def get_user_payments_stats(user_id: int) -> Dict[str, Any]:
         cursor = conn.execute("""
             SELECT 
                 COUNT(*) as total_payments,
-                COALESCE(SUM(CASE WHEN payment_type = 'crypto' THEN amount_cents ELSE 0 END), 0) as total_amount_cents,
+                COALESCE(SUM(CASE WHEN payment_type IN ('crypto', 'cryptobot', 'xrocket') THEN amount_cents ELSE 0 END), 0) as total_amount_cents,
                 COALESCE(SUM(CASE WHEN payment_type = 'stars' THEN amount_stars ELSE 0 END), 0) as total_amount_stars,
-                COALESCE(SUM(CASE WHEN payment_type IN ('cards', 'yookassa_qr', 'wata', 'platega', 'cardlink', 'balance') THEN t.price_rub ELSE 0 END), 0) as total_amount_rub,
+                COALESCE(SUM(CASE WHEN payment_type IN ('cards', 'yookassa_qr', 'wata', 'platega', 'cardlink', 'crystalpay', 'balance') THEN t.price_rub ELSE 0 END), 0) as total_amount_rub,
                 MAX(paid_at) as last_payment_at
             FROM payments p
             LEFT JOIN tariffs t ON p.tariff_id = t.id
@@ -282,14 +430,14 @@ def get_daily_payments_stats() -> Dict[str, Any]:
         - pending_count: количество ожидающих (неоплаченных)
     """
     with get_db() as conn:
-        # 1. Считаем USDT (crypto)
+        # 1. Считаем USDT (crypto, cryptobot, xrocket)
         cursor = conn.execute("""
             SELECT 
                 COUNT(*) as count,
                 COALESCE(SUM(amount_cents), 0) as total_cents
             FROM payments
             WHERE status = 'paid' 
-            AND payment_type = 'crypto'
+            AND payment_type IN ('crypto', 'cryptobot', 'xrocket')
             AND paid_at >= datetime('now', '-1 day')
         """)
         crypto_row = cursor.fetchone()
@@ -371,20 +519,35 @@ def get_daily_payments_stats() -> Dict[str, Any]:
         """)
         cardlink_row = cursor.fetchone()
 
+        # 8. Считаем CrystalPay (Карта/СБП - Рубли)
+        cursor = conn.execute("""
+            SELECT
+                COUNT(*) as count,
+                COALESCE(SUM(t.price_rub), 0) as total_rub
+            FROM payments p
+            LEFT JOIN tariffs t ON p.tariff_id = t.id
+            WHERE p.status = 'paid'
+            AND p.payment_type = 'crystalpay'
+            AND p.paid_at >= datetime('now', '-1 day')
+        """)
+        crystalpay_row = cursor.fetchone()
+
         paid_count = (crypto_row['count'] if crypto_row else 0) + \
                      (stars_row['count'] if stars_row else 0) + \
                      (cards_row['count'] if cards_row else 0) + \
                      (qr_row['count'] if qr_row else 0) + \
                      (wata_row['count'] if wata_row else 0) + \
                      (platega_row['count'] if platega_row else 0) + \
-                     (cardlink_row['count'] if cardlink_row else 0)
+                     (cardlink_row['count'] if cardlink_row else 0) + \
+                     (crystalpay_row['count'] if crystalpay_row else 0)
         total_cents = crypto_row['total_cents'] if crypto_row else 0
         total_stars = stars_row['total_stars'] if stars_row else 0
         total_rub = (cards_row['total_rub'] if cards_row else 0) + \
                     (qr_row['total_rub'] if qr_row else 0) + \
                     (wata_row['total_rub'] if wata_row else 0) + \
                     (platega_row['total_rub'] if platega_row else 0) + \
-                    (cardlink_row['total_rub'] if cardlink_row else 0)
+                    (cardlink_row['total_rub'] if cardlink_row else 0) + \
+                    (crystalpay_row['total_rub'] if crystalpay_row else 0)
         
         return {
             'paid_count': paid_count,

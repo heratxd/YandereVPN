@@ -5,6 +5,9 @@ from .yookassa import router as yookassa_router
 from .wata import router as wata_router
 from .platega import router as platega_router
 from .cardlink import router as cardlink_router
+from .cryptobot import router as cryptobot_router
+from .xrocket import router as xrocket_router
+from .crystalpay import router as crystalpay_router
 from .stars import router as stars_router
 from .crypto import router as crypto_router
 from .keys_config import router as keys_config_router
@@ -17,6 +20,9 @@ router.include_router(yookassa_router)
 router.include_router(wata_router)
 router.include_router(platega_router)
 router.include_router(cardlink_router)
+router.include_router(cryptobot_router)
+router.include_router(xrocket_router)
+router.include_router(crystalpay_router)
 router.include_router(stars_router)
 router.include_router(crypto_router)
 router.include_router(keys_config_router)

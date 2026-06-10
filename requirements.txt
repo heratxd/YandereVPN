@@ -2,3 +2,4 @@ aiogram>=3.3.0
 aiohttp
 qrcode
 pillow
+psycopg2-binary>=2.9.0

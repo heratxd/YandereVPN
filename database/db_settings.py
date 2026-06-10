@@ -42,6 +42,17 @@ __all__ = [
     'is_trial_enabled',
     'get_trial_tariff_id',
     'is_demo_payment_enabled',
+    'is_cryptobot_enabled',
+    'is_cryptobot_configured',
+    'get_cryptobot_token',
+    'is_cryptobot_sandbox',
+    'is_xrocket_enabled',
+    'is_xrocket_configured',
+    'get_xrocket_token',
+    'is_xrocket_sandbox',
+    'is_crystalpay_enabled',
+    'is_crystalpay_configured',
+    'get_crystalpay_credentials',
 ]
 
 DEFAULT_DISPLAY_TIMEZONE = 'Europe/Moscow'
@@ -345,3 +356,70 @@ def get_trial_tariff_id() -> Optional[int]:
 def is_demo_payment_enabled() -> bool:
     """Включена ли демонстрационная оплата РФ картой."""
     return get_setting('demo_payment_enabled', '0') == '1'
+
+
+def is_cryptobot_enabled() -> bool:
+    """Проверяет, включена ли оплата через CryptoBot."""
+    return get_setting('cryptobot_enabled', '0') == '1'
+
+
+def is_cryptobot_configured() -> bool:
+    """Проверяет, настроена ли оплата через CryptoBot полностью."""
+    if not is_cryptobot_enabled():
+        return False
+    token = get_setting('cryptobot_api_token', '')
+    return bool(token and token.strip())
+
+
+def get_cryptobot_token() -> str:
+    """Возвращает API токен CryptoBot."""
+    return get_setting('cryptobot_api_token', '') or ''
+
+
+def is_cryptobot_sandbox() -> bool:
+    """Проверяет, включен ли режим Sandbox для CryptoBot."""
+    return get_setting('cryptobot_sandbox', '0') == '1'
+
+
+def is_xrocket_enabled() -> bool:
+    """Проверяет, включена ли оплата через xRocket."""
+    return get_setting('xrocket_enabled', '0') == '1'
+
+
+def is_xrocket_configured() -> bool:
+    """Проверяет, настроена ли оплата через xRocket полностью."""
+    if not is_xrocket_enabled():
+        return False
+    token = get_setting('xrocket_api_key', '')
+    return bool(token and token.strip())
+
+
+def get_xrocket_token() -> str:
+    """Возвращает API токен xRocket."""
+    return get_setting('xrocket_api_key', '') or ''
+
+
+def is_xrocket_sandbox() -> bool:
+    """Проверяет, включен ли режим Sandbox для xRocket."""
+    return get_setting('xrocket_sandbox', '0') == '1'
+
+
+def is_crystalpay_enabled() -> bool:
+    """Проверяет, включена ли оплата через CrystalPay."""
+    return get_setting('crystalpay_enabled', '0') == '1'
+
+
+def is_crystalpay_configured() -> bool:
+    """Проверяет, настроена ли оплата через CrystalPay полностью."""
+    if not is_crystalpay_enabled():
+        return False
+    login = get_setting('crystalpay_login', '')
+    secret = get_setting('crystalpay_secret', '')
+    return bool(login and login.strip() and secret and secret.strip())
+
+
+def get_crystalpay_credentials() -> tuple[str, str]:
+    """Возвращает логин и секрет CrystalPay."""
+    login = get_setting('crystalpay_login', '')
+    secret = get_setting('crystalpay_secret', '')
+    return login, secret

@@ -54,7 +54,6 @@ def admin_main_menu_kb() -> InlineKeyboardMarkup:
             style='primary',
         )
     )
-    builder.row(InlineKeyboardButton(text='🤍 Поддержка автора', callback_data='admin_author_support', style='success'))
     builder.row(home_button())
     return builder.as_markup()
 

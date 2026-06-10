@@ -55,6 +55,16 @@ class AdminStates(StatesGroup):
     cardlink_setup_shop_id = State()    # Ввод Shop ID Cardlink
     cardlink_setup_api_token = State()  # Ввод API-токена Cardlink
 
+    # ========== Настройка CryptoBot ==========
+    cryptobot_setup_token = State()
+
+    # ========== Настройка xRocket ==========
+    xrocket_setup_token = State()
+
+    # ========== Настройка CrystalPay ==========
+    crystalpay_setup_login = State()
+    crystalpay_setup_secret = State()
+
     # ========== Реферальная система ==========
     referral_menu = State()          # Главное меню реферальной системы
     referral_level_edit = State()    # Редактирование уровня

@@ -284,7 +284,7 @@ def balance_payment_kb(
     return builder.as_markup()
 
 
-def tariff_select_kb(tariffs: list, back_callback: str = "buy_key", order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, groups_data: list = None, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False) -> InlineKeyboardMarkup:
+def tariff_select_kb(tariffs: list, back_callback: str = "buy_key", order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, groups_data: list = None, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False, is_cryptobot: bool = False, is_xrocket: bool = False, is_crystalpay: bool = False) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора тарифа для оплаты Stars, Картами, Криптой или Балансом.
 
@@ -357,6 +357,25 @@ def tariff_select_kb(tariffs: list, back_callback: str = "buy_key", order_id: st
                 price_display = f"{price_rub} ₽"
                 prefix = "cardlink_pay"
                 emoji = '🔗'
+            elif is_cryptobot:
+                price_usd = tariff['price_cents'] / 100
+                price_str = f"{price_usd:g}".replace('.', ',')
+                price_display = f"${price_str}"
+                prefix = "cryptobot_pay"
+                emoji = '🤖'
+            elif is_xrocket:
+                price_usd = tariff['price_cents'] / 100
+                price_str = f"{price_usd:g}".replace('.', ',')
+                price_display = f"${price_str}"
+                prefix = "xrocket_pay"
+                emoji = '🚀'
+            elif is_crystalpay:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub <= 0:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "crystalpay_pay"
+                emoji = '💎'
             elif is_balance:
                 price_rub = tariff.get('price_rub')
                 if price_rub is None or price_rub <= 1:
@@ -549,7 +568,7 @@ def key_show_kb(key_id: int = None) -> InlineKeyboardMarkup:
     return key_issued_kb()
 
 
-def renew_tariff_select_kb(tariffs: list, key_id: int, order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False) -> InlineKeyboardMarkup:
+def renew_tariff_select_kb(tariffs: list, key_id: int, order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False, is_cryptobot: bool = False, is_xrocket: bool = False, is_crystalpay: bool = False) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора тарифа для продления ключа (для Stars, Карт или Баланса).
 
@@ -608,6 +627,25 @@ def renew_tariff_select_kb(tariffs: list, key_id: int, order_id: str = None, is_
             price_display = f"{price_rub} ₽"
             prefix = "renew_pay_cardlink"
             emoji = '🔗'
+        elif is_cryptobot:
+            price_usd = tariff['price_cents'] / 100
+            price_str = f"{price_usd:g}".replace('.', ',')
+            price_display = f"${price_str}"
+            prefix = "renew_pay_cryptobot"
+            emoji = '🤖'
+        elif is_xrocket:
+            price_usd = tariff['price_cents'] / 100
+            price_str = f"{price_usd:g}".replace('.', ',')
+            price_display = f"${price_str}"
+            prefix = "renew_pay_xrocket"
+            emoji = '🚀'
+        elif is_crystalpay:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub <= 0:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_crystalpay"
+            emoji = '💎'
         elif is_demo:
             price_rub = tariff.get('price_rub')
             if price_rub is None or price_rub <= 1:

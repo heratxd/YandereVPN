@@ -281,6 +281,69 @@ def _resolve_renew_pay_balance(ctx: dict) -> Optional[dict]:
     return {"callback_data": f"pay_use_balance:{key_id}"}
 
 
+def _resolve_pay_cryptobot(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через CryptoBot."""
+    from database.requests import is_cryptobot_configured
+
+    if not is_cryptobot_configured():
+        return None
+
+    return {"callback_data": "pay_cryptobot"}
+
+
+def _resolve_pay_xrocket(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через xRocket."""
+    from database.requests import is_xrocket_configured
+
+    if not is_xrocket_configured():
+        return None
+
+    return {"callback_data": "pay_xrocket"}
+
+
+def _resolve_pay_crystalpay(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через CrystalPay."""
+    from database.requests import is_crystalpay_configured
+
+    if not is_crystalpay_configured():
+        return None
+
+    return {"callback_data": "pay_crystalpay"}
+
+
+def _resolve_renew_pay_cryptobot(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через CryptoBot."""
+    from database.requests import is_cryptobot_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_cryptobot_configured():
+        return None
+
+    return {"callback_data": f"renew_cryptobot_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_xrocket(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через xRocket."""
+    from database.requests import is_xrocket_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_xrocket_configured():
+        return None
+
+    return {"callback_data": f"renew_xrocket_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_crystalpay(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через CrystalPay."""
+    from database.requests import is_crystalpay_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_crystalpay_configured():
+        return None
+
+    return {"callback_data": f"renew_crystalpay_tariff:{key_id}"}
+
+
 def _resolve_renew_back(ctx: dict) -> Optional[dict]:
     """Кнопка возврата со страницы выбора оплаты продления к ключу."""
     key_id = _get_renew_key_id(ctx)
@@ -300,6 +363,9 @@ SYSTEM_BUTTONS: Dict[str, Callable[[dict], Optional[dict]]] = {
     "btn_pay_wata":    _resolve_pay_wata,
     "btn_pay_platega": _resolve_pay_platega,
     "btn_pay_cardlink": _resolve_pay_cardlink,
+    "btn_pay_cryptobot": _resolve_pay_cryptobot,
+    "btn_pay_xrocket": _resolve_pay_xrocket,
+    "btn_pay_crystalpay": _resolve_pay_crystalpay,
     "btn_pay_demo":    _resolve_pay_demo,
     "btn_pay_balance": _resolve_pay_balance,
     "btn_renew_pay_crypto": _resolve_renew_pay_crypto,
@@ -309,6 +375,9 @@ SYSTEM_BUTTONS: Dict[str, Callable[[dict], Optional[dict]]] = {
     "btn_renew_pay_wata": _resolve_renew_pay_wata,
     "btn_renew_pay_platega": _resolve_renew_pay_platega,
     "btn_renew_pay_cardlink": _resolve_renew_pay_cardlink,
+    "btn_renew_pay_cryptobot": _resolve_renew_pay_cryptobot,
+    "btn_renew_pay_xrocket": _resolve_renew_pay_xrocket,
+    "btn_renew_pay_crystalpay": _resolve_renew_pay_crystalpay,
     "btn_renew_pay_demo": _resolve_renew_pay_demo,
     "btn_renew_pay_balance": _resolve_renew_pay_balance,
     "btn_renew_back": _resolve_renew_back,

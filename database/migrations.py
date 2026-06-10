@@ -34,7 +34,7 @@ def _add_column(conn: sqlite3.Connection, table: str, column_def: str) -> None:
 INITIAL_VERSION = 21
 
 # Текущая версия схемы БД (инкрементируется при добавлении новых миграций)
-LATEST_VERSION = 36
+LATEST_VERSION = 37
 
 
 def _my_keys_item_template() -> str:
@@ -91,16 +91,19 @@ def _renew_payment_page_buttons() -> str:
     """Дефолтные кнопки страницы выбора способа оплаты при продлении."""
     return json.dumps([
         {"id": "btn_renew_pay_crypto",  "label": "🪙 Оплатить USDT",              "color": "secondary",   "row": 0, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_stars",   "label": "⭐ Оплатить звёздами",          "color": "secondary",   "row": 1, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_cards",   "label": "💳 TG payments",                "color": "secondary",   "row": 2, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_qr",      "label": "📱 ЮКасса (QR/СБП)",            "color": "secondary",   "row": 3, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_wata",    "label": "🌊 WATA (Карта/СБП)",           "color": "secondary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_platega", "label": "💸 Platega (СБП)",              "color": "secondary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_cardlink", "label": "🔗 Cardlink (Карта/СБП)",      "color": "secondary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_demo",    "label": "🏦 Демо оплата (РФ карта)",     "color": "secondary",   "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_balance", "label": "💎 Использовать баланс",        "color": "secondary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_back",        "label": "⬅️ Назад",                     "color": "secondary", "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_back_main",         "label": "🈴 На главную",                "color": "secondary", "row": 9, "col": 1, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
+        {"id": "btn_renew_pay_cryptobot", "label": "🤖 CryptoBot",                "color": "secondary",   "row": 1, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_xrocket",   "label": "🚀 xRocket",                  "color": "secondary",   "row": 2, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_crystalpay", "label": "💎 CrystalPay",              "color": "secondary",   "row": 3, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_stars",   "label": "⭐ Оплатить звёздами",          "color": "secondary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_cards",   "label": "💳 TG payments",                "color": "secondary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_qr",      "label": "📱 ЮКасса (QR/СБП)",            "color": "secondary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_wata",    "label": "🌊 WATA (Карта/СБП)",           "color": "secondary",   "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_platega", "label": "💸 Platega (СБП)",              "color": "secondary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_cardlink", "label": "🔗 Cardlink (Карта/СБП)",      "color": "secondary",   "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_demo",    "label": "🏦 Демо оплата (РФ карта)",     "color": "secondary",   "row": 10, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_balance", "label": "💎 Использовать баланс",        "color": "secondary",   "row": 11, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_back",        "label": "⬅️ Назад",                     "color": "secondary", "row": 12, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_back_main",         "label": "🈴 На главную",                "color": "secondary", "row": 12, "col": 1, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
     ], ensure_ascii=False)
 
 
@@ -359,6 +362,15 @@ def migration_initial(conn: sqlite3.Connection) -> None:
         # На существующих ботах migration_28 ставит 'key' — там уже есть рабочие
         # одиночные ключи, и режим менять нельзя без явного действия админа.
         ('bot_mode', 'subscription'),
+        ('cryptobot_enabled', '0'),
+        ('cryptobot_api_token', ''),
+        ('cryptobot_sandbox', '0'),
+        ('xrocket_enabled', '0'),
+        ('xrocket_api_key', ''),
+        ('xrocket_sandbox', '0'),
+        ('crystalpay_enabled', '0'),
+        ('crystalpay_login', ''),
+        ('crystalpay_secret', ''),
     ]
     for key, value in default_settings:
         conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
@@ -591,15 +603,10 @@ def migration_initial(conn: sqlite3.Connection) -> None:
                 "Hiddify или v2rayNG или V2Box\n"
                 "Подробная инструкция по настройке VPN👇 https://telegra.ph/Kak-nastroit-VPN-Gajd-za-2-minuty-01-23\n\n"
                 "3. Импортируйте ключ в приложение\n\n"
-                "4. Подключайтесь и наслаждайтесь! 🚀\n\n"
-                "---\n"
-                "Разработчик @plushkin_blog\n"
-                "---"
+                "4. Подключайтесь и наслаждайтесь! 🚀"
             ),
             'buttons': json.dumps([
-                {"id": "btn_news",      "label": "📢 Новости",    "color": "secondary", "row": 0, "col": 0, "is_hidden": False, "action_type": "url", "action_value": "https://t.me/plushkin_blog"},
-                {"id": "btn_support",   "label": "💬 Поддержка",  "color": "secondary", "row": 0, "col": 1, "is_hidden": False, "action_type": "url", "action_value": "https://t.me/plushkin_chat"},
-                {"id": "btn_back_main", "label": "🈴 На главную", "color": "secondary", "row": 1, "col": 0, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
+                {"id": "btn_back_main", "label": "🈴 На главную", "color": "secondary", "row": 0, "col": 0, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
             ], ensure_ascii=False),
         },
         'trial': {
@@ -635,13 +642,16 @@ def migration_initial(conn: sqlite3.Connection) -> None:
             ),
             'buttons': json.dumps([
                 {"id": "btn_pay_crypto",  "label": "🪙 Оплатить USDT",          "color": "primary",   "row": 0, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_stars",   "label": "⭐ Оплатить звёздами",      "color": "primary",   "row": 1, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_cards",   "label": "💳 Оплатить картой",        "color": "primary",   "row": 2, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_qr",      "label": "📱 QR-оплата (Карта/СБП)",  "color": "primary",   "row": 3, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_wata",    "label": "🌊 Оплата WATA (Карта/СБП)", "color": "primary",  "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_demo",    "label": "🏦 Демо оплата (РФ карта)", "color": "primary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_balance", "label": "💎 Использовать баланс",    "color": "primary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_back_main",   "label": "🈴 На главную",             "color": "secondary", "row": 7, "col": 0, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
+                {"id": "btn_pay_cryptobot", "label": "🤖 Оплатить CryptoBot",    "color": "primary",   "row": 1, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_xrocket",   "label": "🚀 Оплатить xRocket",      "color": "primary",   "row": 2, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_crystalpay", "label": "💎 Оплатить CrystalPay",  "color": "primary",   "row": 3, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_stars",   "label": "⭐ Оплатить звёздами",      "color": "primary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_cards",   "label": "💳 Оплатить картой",        "color": "primary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_qr",      "label": "📱 QR-оплата (Карта/СБП)",  "color": "primary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_wata",    "label": "🌊 Оплата WATA (Карта/СБП)", "color": "primary",  "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_demo",    "label": "🏦 Демо оплата (РФ карта)", "color": "primary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_balance", "label": "💎 Использовать баланс",    "color": "primary",   "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_back_main",   "label": "🈴 На главную",             "color": "secondary", "row": 10, "col": 0, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
             ], ensure_ascii=False),
         },
         'renew_payment': {
@@ -1216,17 +1226,124 @@ def migration_35(conn):
 
 def migration_36(conn):
     """
-    Миграция v36: скрытая настройка часового пояса отображения дат.
-
-    SQLite продолжает хранить даты в UTC, настройка влияет только на вывод в Telegram.
+    Миграция v36: Пропущена / Резерв.
     """
-    conn.execute(
-        """
-        INSERT OR IGNORE INTO settings (key, value)
-        VALUES ('display_timezone', 'Europe/Moscow')
-        """
-    )
-    logger.info("Миграция v36 применена: добавлена настройка display_timezone")
+    pass
+
+
+def migration_37(conn):
+    """
+    Миграция v37: добавление методов CryptoBot, xRocket Pay и CrystalPay.
+    """
+    # 1. Настройки в settings
+    settings_to_add = [
+        ('cryptobot_enabled', '0'),
+        ('cryptobot_api_token', ''),
+        ('cryptobot_sandbox', '0'),
+        ('xrocket_enabled', '0'),
+        ('xrocket_api_key', ''),
+        ('xrocket_sandbox', '0'),
+        ('crystalpay_enabled', '0'),
+        ('crystalpay_login', ''),
+        ('crystalpay_secret', ''),
+    ]
+    for key, value in settings_to_add:
+        conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
+
+    # 2. Новые колонки в payments
+    _add_column(conn, "payments", "cryptobot_invoice_id TEXT")
+    _add_column(conn, "payments", "xrocket_invoice_id TEXT")
+    _add_column(conn, "payments", "crystalpay_invoice_id TEXT")
+
+    # 3. Обновляем prepayment buttons
+    cursor = conn.execute("SELECT buttons_default FROM pages WHERE page_key = 'prepayment'")
+    row = cursor.fetchone()
+    if row:
+        try:
+            buttons = json.loads(row['buttons_default'])
+        except Exception:
+            buttons = []
+        
+        existing_ids = {b.get('id') for b in buttons if isinstance(b, dict)}
+        new_buttons = [
+            {"id": "btn_pay_cryptobot", "label": "🤖 Оплатить CryptoBot", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_xrocket", "label": "🚀 Оплатить xRocket", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_crystalpay", "label": "💎 Оплатить CrystalPay", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+        ]
+        
+        buttons_to_add = [b for b in new_buttons if b['id'] not in existing_ids]
+        if buttons_to_add:
+            back_btn = None
+            other_buttons = []
+            for b in buttons:
+                if isinstance(b, dict):
+                    if b.get('id') == 'btn_back_main':
+                        back_btn = b
+                    else:
+                        other_buttons.append(b)
+            
+            max_row = max((b.get('row', 0) for b in other_buttons), default=-1)
+            current_row = max_row + 1
+            for b in buttons_to_add:
+                b['row'] = current_row
+                b['col'] = 0
+                other_buttons.append(b)
+                current_row += 1
+            
+            if back_btn:
+                back_btn['row'] = current_row
+                other_buttons.append(back_btn)
+                
+            conn.execute(
+                "UPDATE pages SET buttons_default = ? WHERE page_key = 'prepayment'",
+                (json.dumps(other_buttons, ensure_ascii=False),)
+            )
+            logger.info("Кнопки CryptoBot, xRocket, CrystalPay добавлены в prepayment")
+
+    # 4. Обновляем renew_payment buttons
+    cursor = conn.execute("SELECT buttons_default FROM pages WHERE page_key = 'renew_payment'")
+    row = cursor.fetchone()
+    if row:
+        try:
+            buttons = json.loads(row['buttons_default'])
+        except Exception:
+            buttons = []
+            
+        existing_ids = {b.get('id') for b in buttons if isinstance(b, dict)}
+        new_buttons = [
+            {"id": "btn_renew_pay_cryptobot", "label": "🤖 CryptoBot", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_xrocket", "label": "🚀 xRocket", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_crystalpay", "label": "💎 CrystalPay", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+        ]
+        
+        buttons_to_add = [b for b in new_buttons if b['id'] not in existing_ids]
+        if buttons_to_add:
+            back_buttons = []
+            other_buttons = []
+            for b in buttons:
+                if isinstance(b, dict):
+                    if b.get('id') in ('btn_renew_back', 'btn_back_main'):
+                        back_buttons.append(b)
+                    else:
+                        other_buttons.append(b)
+                        
+            max_row = max((b.get('row', 0) for b in other_buttons), default=-1)
+            current_row = max_row + 1
+            for b in buttons_to_add:
+                b['row'] = current_row
+                b['col'] = 0
+                other_buttons.append(b)
+                current_row += 1
+                
+            for b in back_buttons:
+                b['row'] = current_row
+                other_buttons.append(b)
+                
+            conn.execute(
+                "UPDATE pages SET buttons_default = ? WHERE page_key = 'renew_payment'",
+                (json.dumps(other_buttons, ensure_ascii=False),)
+            )
+            logger.info("Кнопки продления CryptoBot, xRocket, CrystalPay добавлены в renew_payment")
 
 
 MIGRATIONS = {
@@ -1245,8 +1362,98 @@ MIGRATIONS = {
     34: migration_34,
     35: migration_35,
     36: migration_36,
+    37: migration_37,
 }
 
+
+
+def migrate_data_sqlite_to_postgres() -> None:
+    """
+    Мигрирует данные из локальной БД SQLite (vpn_bot.db) в PostgreSQL,
+    если это новая установка PostgreSQL и есть существующая БД SQLite с данными.
+    """
+    try:
+        import config
+        if getattr(config, "DB_TYPE", "sqlite") != "postgres":
+            return
+    except ImportError:
+        return
+
+    from pathlib import Path
+    sqlite_db_path = Path(__file__).parent / "vpn_bot.db"
+    if not sqlite_db_path.exists():
+        return
+
+    logger.info("ℹ️ Обнаружена локальная БД SQLite. Проверяем необходимость импорта данных...")
+
+    from .connection import get_db
+    import sqlite3
+
+    try:
+        with get_db() as pg_conn:
+            from .connection import PostgresConnection
+            if not isinstance(pg_conn, PostgresConnection):
+                logger.info("Подключение к PostgreSQL неактивно (используется SQLite) — импорт пропущен.")
+                return
+
+            cursor = pg_conn.execute("SELECT COUNT(*) as cnt FROM users")
+            pg_users_count = cursor.fetchone()['cnt']
+            if pg_users_count > 0:
+                logger.info("База данных PostgreSQL уже содержит пользователей — импорт пропущен.")
+                return
+
+            logger.info("🚀 Начало импорта данных из SQLite в PostgreSQL...")
+            sqlite_conn = sqlite3.connect(sqlite_db_path)
+            sqlite_conn.row_factory = sqlite3.Row
+
+            tables = [
+                'settings',
+                'pages',
+                'users',
+                'tariffs',
+                'tariff_groups',
+                'servers',
+                'server_groups',
+                'vpn_keys',
+                'payments',
+                'notification_log',
+                'referral_levels',
+                'referral_stats',
+                'schema_version'
+            ]
+
+            for table in tables:
+                sqlite_cursor = sqlite_conn.cursor()
+                sqlite_cursor.execute(f"SELECT * FROM {table}")
+                rows = sqlite_cursor.fetchall()
+                if not rows:
+                    continue
+
+                keys = list(rows[0].keys())
+                placeholders = ", ".join(["%s"] * len(keys))
+                columns = ", ".join(keys)
+                insert_query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+                data_to_insert = [tuple(row[k] for k in keys) for row in rows]
+                
+                pg_conn.executemany(insert_query, data_to_insert)
+                logger.info(f"✅ Таблица {table}: импортировано {len(data_to_insert)} строк.")
+
+                if 'id' in keys and table not in ('settings', 'schema_version', 'server_groups'):
+                    max_id = max(row['id'] for row in rows)
+                    pg_conn.execute(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), %s)", (max_id,))
+
+            sqlite_conn.close()
+            logger.info("🎉 Импорт данных из SQLite в PostgreSQL успешно завершен!")
+            
+            backup_path = sqlite_db_path.parent / "vpn_bot.db.backup"
+            try:
+                sqlite_db_path.rename(backup_path)
+                logger.info(f"Файл SQLite переименован в {backup_path.name}")
+            except Exception as rename_err:
+                logger.warning(f"Не удалось переименовать файл SQLite: {rename_err}")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при импорте данных из SQLite в PostgreSQL: {e}")
 
 
 def run_migrations() -> None:
@@ -1264,6 +1471,8 @@ def run_migrations() -> None:
         
         if current >= LATEST_VERSION:
             logger.info(f"✅ БД соответствует версии {LATEST_VERSION}. Миграция не требуется.")
+            # Даже если версия совпадает, проверяем импорт из SQLite на случай перехода
+            migrate_data_sqlite_to_postgres()
             return
         
         # Защита: БД на промежуточной версии, которую нельзя обновить сжатыми миграциями
@@ -1291,6 +1500,10 @@ def run_migrations() -> None:
         
         logger.info(f"✅ Миграция успешная: БД обновлена до версии {LATEST_VERSION}")
         
+        # Запускаем импорт данных если нужно
+        migrate_data_sqlite_to_postgres()
+        
     except Exception as e:
         logger.error(f"❌ Неуспешная миграция: {e}")
         raise
+

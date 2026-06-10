@@ -280,3 +280,230 @@ async def back_to_server_select(callback: CallbackQuery, state: FSMContext):
         text_replacements={'%данныеэкрана%': build_new_key_server_back_data()},
         prepend_buttons=keyboard_rows(new_key_server_list_kb(servers, include_home=False)),
     )
+
+
+# ============================================================================
+# БЕССТЕЙТОВЫЕ ОБРАБОТЧИКИ ДЛЯ ПЛАТЕЖЕЙ ЧЕРЕЗ WEBHOOK
+# ============================================================================
+
+@router.callback_query(F.data.startswith('wh_server:'))
+async def process_wh_server_selection(callback: CallbackQuery):
+    """Выбор сервера для нового ключа, оплаченного через webhook (бесстейтовый)."""
+    parts = callback.data.split(':')
+    order_id = parts[1]
+    server_id = int(parts[2])
+    
+    from database.requests import find_order_by_order_id, get_server_by_id
+    from bot.services.vpn_api import is_subscription_mode, get_client, VPNAPIError
+    
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await callback.answer('❌ Заказ не найден', show_alert=True)
+        return
+        
+    server = get_server_by_id(server_id)
+    if not server:
+        await callback.answer('❌ Сервер не найден', show_alert=True)
+        return
+        
+    if is_subscription_mode():
+        await run_wh_subscription_final(callback, order, server_id)
+        return
+        
+    try:
+        client = await get_client(server_id)
+        inbounds = await client.get_inbounds()
+        if not inbounds:
+            await callback.answer('❌ На сервере нет доступных протоколов', show_alert=True)
+            return
+        if len(inbounds) == 1:
+            await run_wh_final(callback, order, server_id, inbounds[0]['id'])
+            return
+            
+        from bot.keyboards.user import new_key_inbound_list_kb
+        from bot.utils.key_pages import build_server_screen_data, keyboard_rows
+        from bot.utils.page_renderer import render_page
+        
+        builder = InlineKeyboardBuilder()
+        for inb in inbounds:
+            builder.row(InlineKeyboardButton(
+                text=f"⚙️ {inb['protocol']} ({inb['remark'] or inb['port']})",
+                callback_data=f"wh_inbound:{order_id}:{server_id}:{inb['id']}"
+            ))
+        
+        await render_page(
+            callback,
+            page_key='new_key_inbound_select',
+            text_replacements={'%данныеэкрана%': build_server_screen_data(server)},
+            prepend_buttons=keyboard_rows(builder.as_markup()),
+        )
+    except VPNAPIError as e:
+        await callback.answer(f'❌ Ошибка подключения: {e}', show_alert=True)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('wh_inbound:'))
+async def process_wh_inbound_selection(callback: CallbackQuery):
+    """Выбор протокола для нового ключа, оплаченного через webhook (бесстейтовый)."""
+    parts = callback.data.split(':')
+    order_id = parts[1]
+    server_id = int(parts[2])
+    inbound_id = int(parts[3])
+    
+    from database.requests import find_order_by_order_id
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await callback.answer('❌ Заказ не найден', show_alert=True)
+        return
+        
+    await run_wh_final(callback, order, server_id, inbound_id)
+
+
+async def run_wh_subscription_final(callback: CallbackQuery, order: dict, server_id: int):
+    import uuid as _uuid
+    from database.requests import (
+        update_payment_key_id, get_key_details_for_user,
+        create_initial_vpn_key, get_tariff_by_id, update_vpn_key_config
+    )
+    from bot.services.vpn_api import get_client
+    from bot.handlers.admin.users_keys import generate_unique_email
+    from bot.utils.key_sender import send_key_with_qr
+    from bot.keyboards.user import key_issued_kb
+
+    order_id = order['order_id']
+    key_id = order['vpn_key_id']
+    telegram_id = callback.from_user.id
+    username = callback.from_user.username
+
+    if not key_id:
+        days = order.get('period_days') or order.get('duration_days') or 30
+        _tariff = get_tariff_by_id(order['tariff_id'])
+        traffic_limit_bytes = (_tariff.get('traffic_limit_gb', 0) or 0) * 1024 ** 3 if _tariff else 0
+        key_id = create_initial_vpn_key(order['user_id'], order['tariff_id'], days, traffic_limit=traffic_limit_bytes)
+        update_payment_key_id(order_id, key_id)
+
+    await safe_edit_or_send(callback.message, '⏳ Настраиваем вашу подписку...')
+
+    try:
+        user_fake_dict = {'telegram_id': telegram_id, 'username': username}
+        panel_email = generate_unique_email(user_fake_dict)
+        sub_id = _uuid.uuid4().hex
+
+        client = await get_client(server_id)
+        inbounds = await client.get_inbounds()
+        if not inbounds:
+            raise RuntimeError('На сервере нет доступных inbound')
+
+        days = order.get('period_days') or order.get('duration_days') or 30
+        _tariff_data = get_tariff_by_id(order['tariff_id'])
+        limit_gb = (_tariff_data.get('traffic_limit_gb', 0) or 0) if _tariff_data else 0
+
+        min_inbound_id = min(inb['id'] for inb in inbounds)
+        first_uuid = None
+        created_count = 0
+        for inb in inbounds:
+            try:
+                flow = await client.get_inbound_flow(inb['id'])
+                res = await client.add_client(
+                    inbound_id=inb['id'],
+                    email=panel_email,
+                    total_gb=limit_gb,
+                    expire_days=days,
+                    limit_ip=_tariff_data.get('max_ips', 1) if _tariff_data else 1,
+                    enable=True,
+                    tg_id=str(telegram_id),
+                    flow=flow,
+                    sub_id=sub_id,
+                )
+                if inb['id'] == min_inbound_id:
+                    first_uuid = res['uuid']
+                created_count += 1
+            except Exception as e:
+                logger.warning(f"run_wh_subscription_final: inbound {inb['id']} failed: {e}")
+
+        if created_count == 0 or first_uuid is None:
+            raise RuntimeError('Не удалось создать ни одного клиента на сервере')
+
+        update_vpn_key_config(
+            key_id=key_id,
+            server_id=server_id,
+            panel_inbound_id=min_inbound_id,
+            panel_email=panel_email,
+            client_uuid=first_uuid,
+            sub_id=sub_id,
+        )
+        update_payment_key_id(order_id, key_id)
+        
+        from bot.services.vpn_api import sync_key_to_panel_state
+        await sync_key_to_panel_state(key_id)
+
+        new_key = get_key_details_for_user(key_id, telegram_id)
+        await send_key_with_qr(callback, new_key, key_issued_kb(), is_new=True)
+    except Exception as e:
+        logger.error(f'Ошибка настройки subscription-ключа (id={key_id}): {e}')
+        await safe_edit_or_send(callback.message,
+            f'❌ Ошибка настройки ключа: {escape_html(str(e))}\n'
+            f'Обратитесь в поддержку, указав Order ID: {order_id}')
+
+
+async def run_wh_final(callback: CallbackQuery, order: dict, server_id: int, inbound_id: int):
+    from database.requests import (
+        update_vpn_key_config, update_payment_key_id,
+        get_key_details_for_user, create_initial_vpn_key, get_tariff_by_id
+    )
+    from bot.services.vpn_api import get_client
+    from bot.handlers.admin.users_keys import generate_unique_email
+    from bot.utils.key_sender import send_key_with_qr
+    from bot.keyboards.user import key_issued_kb
+
+    order_id = order['order_id']
+    key_id = order['vpn_key_id']
+    telegram_id = callback.from_user.id
+    username = callback.from_user.username
+
+    if not key_id:
+        days = order.get('period_days') or order.get('duration_days') or 30
+        _tariff = get_tariff_by_id(order['tariff_id'])
+        traffic_limit_bytes = (_tariff.get('traffic_limit_gb', 0) or 0) * 1024 ** 3 if _tariff else 0
+        key_id = create_initial_vpn_key(order['user_id'], order['tariff_id'], days, traffic_limit=traffic_limit_bytes)
+        update_payment_key_id(order_id, key_id)
+
+    await safe_edit_or_send(callback.message, '⏳ Настраиваем ваш ключ...')
+
+    try:
+        user_fake_dict = {'telegram_id': telegram_id, 'username': username}
+        panel_email = generate_unique_email(user_fake_dict)
+        client = await get_client(server_id)
+        days = order.get('period_days') or order.get('duration_days') or 30
+        
+        _tariff_data = get_tariff_by_id(order['tariff_id'])
+        limit_gb = (_tariff_data.get('traffic_limit_gb', 0) or 0) if _tariff_data else 0
+        flow = await client.get_inbound_flow(inbound_id)
+        res = await client.add_client(
+            inbound_id=inbound_id,
+            email=panel_email,
+            total_gb=limit_gb,
+            expire_days=days,
+            limit_ip=_tariff_data.get('max_ips', 1) if _tariff_data else 1,
+            enable=True,
+            tg_id=str(telegram_id),
+            flow=flow
+        )
+        client_uuid = res['uuid']
+        update_vpn_key_config(
+            key_id=key_id,
+            server_id=server_id,
+            panel_inbound_id=inbound_id,
+            panel_email=panel_email,
+            client_uuid=client_uuid
+        )
+        update_payment_key_id(order_id, key_id)
+        
+        new_key = get_key_details_for_user(key_id, telegram_id)
+        await send_key_with_qr(callback, new_key, key_issued_kb(), is_new=True)
+    except Exception as e:
+        logger.error(f'Ошибка настройки ключа (id={key_id}): {e}')
+        await safe_edit_or_send(callback.message,
+            f'❌ Ошибка настройки ключа: {escape_html(str(e))}\n'
+            f'Обратитесь в поддержку, указав Order ID: {order_id}')
+

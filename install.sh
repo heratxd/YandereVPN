@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Yadreno VPN — скрипт установки и управления
-# Запуск: bash <(curl -sL https://raw.githubusercontent.com/plushkinv/YadrenoVPN/main/install.sh)
+# Запуск: bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh)
 # 
 # === АВТОМАТИЧЕСКИЙ ЗАПУСК (БЕЗ ДИАЛОГОВ) ===
 #
 # 1. Запуск прямо с GitHub (для чистой установки или если папки ещё нет):
-# bash <(curl -sL https://raw.githubusercontent.com/plushkinv/YadrenoVPN/main/install.sh) install <BOT_TOKEN> <ADMIN_ID>
-# bash <(curl -sL https://raw.githubusercontent.com/plushkinv/YadrenoVPN/main/install.sh) update [COMMIT_OR_BRANCH]
-# bash <(curl -sL https://raw.githubusercontent.com/plushkinv/YadrenoVPN/main/install.sh) reset [COMMIT_OR_BRANCH]
+# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh) install <BOT_TOKEN> <ADMIN_ID>
+# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh) update [COMMIT_OR_BRANCH]
+# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh) reset [COMMIT_OR_BRANCH]
 #
 # 2. Локальный запуск (если репозиторий уже установлен и нужно просто обновить/сбросить):
 # bash install.sh update [COMMIT_OR_BRANCH]
@@ -17,7 +17,7 @@
 set -e
 
 INSTALL_DIR="/root/YadrenoVPN"
-REPO_URL="https://github.com/plushkinv/YadrenoVPN.git"
+REPO_URL="https://github.com/heratxd/YadrenoVPN.git"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_FILE="yadreno-vpn.service"
 
@@ -44,6 +44,189 @@ print_warn() {
 
 print_err() {
     echo -e "${RED}[✗]${NC} $1"
+}
+
+# Поиск и отключение старого бота
+cleanup_old_bot_install() {
+    print_header "Поиск и отключение старых версий бота"
+
+    # Находим все службы в /etc/systemd/system/, которые могут относиться к боту
+    local found_services=()
+    
+    # 1. Поиск по стандартным именам
+    for svc in "yadreno-vpn" "yadreno" "vpn-bot" "tg-vpn-bot" "vpn_bot"; do
+        if [ -f "/etc/systemd/system/${svc}.service" ]; then
+            found_services+=("${svc}.service")
+        fi
+    done
+
+    # 2. Ищем по содержимому файлов служб в /etc/systemd/system/
+    for svc_file in /etc/systemd/system/*.service; do
+        if [ -f "$svc_file" ]; then
+            local fname=$(basename "$svc_file")
+            # Проверяем, не добавили ли уже
+            if [[ ! " ${found_services[@]} " =~ " ${fname} " ]]; then
+                if grep -E -q "ExecStart=.*(python|venv).*/main\.py" "$svc_file" || grep -q "yadreno" "$svc_file" || (grep -q "main.py" "$svc_file" && grep -q "vpn" "$svc_file"); then
+                    found_services+=("$fname")
+                fi
+            fi
+        fi
+    done
+
+    # 3. Обрабатываем каждую найденную службу
+    if [ ${#found_services[@]} -gt 0 ]; then
+        print_warn "Обнаружены потенциально старые службы бота: ${found_services[*]}"
+        
+        for old_svc in "${found_services[@]}"; do
+            print_warn "Обработка службы: $old_svc"
+            
+            # Получаем директорию из WorkingDirectory
+            local old_dir=""
+            old_dir=$(grep -oP "WorkingDirectory=\K.*" "/etc/systemd/system/$old_svc" 2>/dev/null | tr -d '\r' || true)
+            
+            if [ -n "$old_dir" ] && [ -d "$old_dir" ]; then
+                print_ok "Рабочая директория старого бота: $old_dir"
+                
+                # Резервное копирование старого конфига
+                if [ -f "$old_dir/config.py" ]; then
+                    cp "$old_dir/config.py" /tmp/yadreno_old_config.py
+                    print_ok "Старый config.py скопирован в /tmp/yadreno_old_config.py"
+                fi
+                
+                # Резервное копирование базы данных (SQLite)
+                if [ -f "$old_dir/database/vpn_bot.db" ]; then
+                    cp "$old_dir/database/vpn_bot.db" /tmp/yadreno_old_db.db
+                    print_ok "База данных скопирована из $old_dir/database/"
+                elif [ -f "$old_dir/vpn_bot.db" ]; then
+                    cp "$old_dir/vpn_bot.db" /tmp/yadreno_old_db.db
+                    print_ok "База данных скопирована из $old_dir"
+                fi
+            fi
+
+            # Останавливаем и отключаем службу
+            print_warn "Убиваем процессы и отключаем службу: $old_svc"
+            systemctl stop "$old_svc" 2>/dev/null || true
+            systemctl disable "$old_svc" 2>/dev/null || true
+            rm -f "/etc/systemd/system/$old_svc"
+            print_ok "Служба $old_svc удалена"
+        done
+        
+        systemctl daemon-reload
+    else
+        print_ok "Активных старых служб бота в systemd не найдено"
+    fi
+
+    # 4. Убиваем все процессы python, которые запускают main.py (кроме тех, которые запущены из /tmp)
+    local pids=$(pgrep -f "python.*main\.py" || true)
+    if [ -n "$pids" ]; then
+        print_warn "Найдены запущенные процессы бота (PIDs: $pids). Завершаем их..."
+        for pid in $pids; do
+            # Проверяем, не является ли это текущим скриптом или процессом установки/тестирования из /tmp
+            local cmdline=$(cat /proc/$pid/cmdline 2>/dev/null | tr '\0' ' ' || true)
+            if [[ ! "$cmdline" =~ "/tmp/" ]]; then
+                print_warn "Убиваем процесс PID $pid: $cmdline"
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+        done
+    fi
+}
+
+# Функция слияния конфигураций
+merge_old_config() {
+    local source_config=""
+    if [ -f "/tmp/yadreno_old_config.py" ]; then
+        source_config="/tmp/yadreno_old_config.py"
+    elif [ -f "/tmp/yadreno_config_backup.py" ]; then
+        source_config="/tmp/yadreno_config_backup.py"
+    fi
+
+    if [ -n "$source_config" ] && [ -f "$INSTALL_DIR/config.py" ]; then
+        print_header "Миграция настроек config.py"
+        
+        # Создаем временный python-скрипт слияния на основе AST
+        cat << 'EOF' > /tmp/migrate_config.py
+import runpy
+import sys
+import ast
+
+old_path = sys.argv[1]
+new_path = sys.argv[2]
+
+try:
+    old_vars = runpy.run_path(old_path)
+except Exception as e:
+    print(f"Ошибка чтения старого конфига: {e}")
+    sys.exit(1)
+
+try:
+    with open(new_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    lines = content.splitlines(keepends=True)
+except Exception as e:
+    print(f"Ошибка чтения шаблона конфига: {e}")
+    sys.exit(1)
+
+# Вытаскиваем только переменные настроек (в верхнем регистре)
+keys_to_migrate = {
+    k: v for k, v in old_vars.items()
+    if k.isupper() and not k.startswith('__') and not isinstance(v, (type, type(sys)))
+}
+
+try:
+    tree = ast.parse(content)
+except Exception as e:
+    print(f"Ошибка парсинга шаблона конфига: {e}")
+    sys.exit(1)
+
+replacements = []
+replaced_keys = set()
+
+for node in tree.body:
+    if isinstance(node, ast.Assign):
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                var_name = target.id
+                if var_name in keys_to_migrate:
+                    val = keys_to_migrate[var_name]
+                    if isinstance(val, str):
+                        formatted_val = f'"{val}"'
+                    else:
+                        formatted_val = repr(val)
+                    new_text = f"{var_name} = {formatted_val}"
+                    replacements.append((node.lineno, node.end_lineno, new_text))
+                    replaced_keys.add(var_name)
+
+# Применяем замены в обратном порядке строк
+replacements.sort(key=lambda x: x[0], reverse=True)
+for start, end, new_text in replacements:
+    lines[start-1:end] = [new_text + '\n']
+
+# Добавляем переменные, которых не было в новом шаблоне
+remaining_keys = set(keys_to_migrate.keys()) - replaced_keys
+if remaining_keys:
+    lines.append("\n# === Дополнительные настройки из старого конфига ===\n")
+    for key in sorted(remaining_keys):
+        val = keys_to_migrate[key]
+        if isinstance(val, str):
+            formatted_val = f'"{val}"'
+        else:
+            formatted_val = repr(val)
+        lines.append(f"{key} = {formatted_val}\n")
+
+try:
+    with open(new_path, 'w', encoding='utf-8') as f:
+        f.writelines(lines)
+    print("✅ Настройки из старого config.py успешно перенесены!")
+except Exception as e:
+    print(f"Ошибка записи нового конфига: {e}")
+    sys.exit(1)
+EOF
+
+        python3 /tmp/migrate_config.py "$source_config" "$INSTALL_DIR/config.py"
+        rm -f /tmp/migrate_config.py
+        rm -f /tmp/yadreno_old_config.py
+        rm -f /tmp/yadreno_config_backup.py
+    fi
 }
 
 # Запрос настроек у пользователя
@@ -103,6 +286,10 @@ write_config() {
     sed -i "s|\"ВАШ_ТОКЕН_БОТА\"|\"$BOT_TOKEN\"|g" "$INSTALL_DIR/config.py"
     sed -i "s|12345678|$ADMIN_ID|g" "$INSTALL_DIR/config.py"
 
+    # Настройки PostgreSQL
+    sed -i "s|DB_TYPE = \"sqlite\"|DB_TYPE = \"postgres\"|g" "$INSTALL_DIR/config.py"
+    sed -i "s|PG_PASSWORD = \"yadreno_pass\"|PG_PASSWORD = \"$PG_PASS\"|g" "$INSTALL_DIR/config.py"
+
     print_ok "config.py создан с вашими настройками"
 }
 
@@ -118,11 +305,45 @@ install_system_deps() {
         python3-venv \
         python3-pip \
         git \
+        postgresql \
+        postgresql-contrib \
         > /dev/null 2>&1
 
+    # Запуск и автозапуск PostgreSQL службы
+    systemctl start postgresql || true
+    systemctl enable postgresql || true
+
     print_ok "Системные пакеты обновлены"
-    print_ok "python3-venv, python3-pip, git установлены"
+    print_ok "python3-venv, python3-pip, git, postgresql установлены"
 }
+
+# Настройка PostgreSQL
+setup_postgresql() {
+    print_header "Настройка локального PostgreSQL"
+
+    # Проверяем, запущен ли PostgreSQL
+    if ! systemctl is-active --quiet postgresql; then
+        systemctl start postgresql || true
+        sleep 2
+    fi
+
+    # Генерация случайного пароля, если его ещё нет
+    if [ -f "$INSTALL_DIR/config.py" ]; then
+        PG_PASS=$(grep -oP "PG_PASSWORD = '\K[^']+" "$INSTALL_DIR/config.py" 2>/dev/null || grep -oP 'PG_PASSWORD = "\K[^"]+' "$INSTALL_DIR/config.py" 2>/dev/null || true)
+    fi
+    if [ -z "$PG_PASS" ]; then
+        PG_PASS=$(openssl rand -hex 16 2>/dev/null || echo "yadreno_secure_pass_$(date +%s)")
+    fi
+
+    # Создание пользователя и БД
+    sudo -u postgres psql -c "CREATE USER yadreno_user WITH PASSWORD '$PG_PASS';" >/dev/null 2>&1 || true
+    sudo -u postgres psql -c "ALTER USER yadreno_user WITH PASSWORD '$PG_PASS';" >/dev/null 2>&1 || true
+    sudo -u postgres psql -c "CREATE DATABASE yadreno_vpn OWNER yadreno_user;" >/dev/null 2>&1 || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE yadreno_vpn TO yadreno_user;" >/dev/null 2>&1 || true
+
+    print_ok "База данных yadreno_vpn и пользователь yadreno_user настроены"
+}
+
 
 # Создание виртуального окружения и установка зависимостей
 setup_venv() {
@@ -187,7 +408,10 @@ start_service() {
 do_install() {
     print_header "🚀 Установка Yadreno VPN"
 
-    # Проверяем, не установлен ли уже
+    # Ищем и отключаем старые версии бота перед установкой
+    cleanup_old_bot_install
+
+    # Проверяем, не установлен ли уже в целевой каталог
     if [ -d "$INSTALL_DIR" ] && [ -d "$INSTALL_DIR/.git" ]; then
         print_warn "Yadreno VPN уже установлен в $INSTALL_DIR"
         if [ "$AUTO_MODE" = "1" ]; then
@@ -236,13 +460,28 @@ do_install() {
         NEED_WRITE_CONFIG=0
     fi
     if [ "$BACKUP_DB" = "1" ] && [ -f "/tmp/yadreno_db_backup.db" ]; then
-        cp /tmp/yadreno_db_backup.db "$INSTALL_DIR/vpn_bot.db"
+        mkdir -p "$INSTALL_DIR/database"
+        cp /tmp/yadreno_db_backup.db "$INSTALL_DIR/database/vpn_bot.db"
         rm /tmp/yadreno_db_backup.db
         print_ok "База данных восстановлена из резервной копии"
     fi
 
+    # Восстановление базы данных старого бота
+    if [ -f "/tmp/yadreno_old_db.db" ]; then
+        mkdir -p "$INSTALL_DIR/database"
+        cp /tmp/yadreno_old_db.db "$INSTALL_DIR/database/vpn_bot.db"
+        rm -f "/tmp/yadreno_old_db.db"
+        print_ok "База данных старого бота перенесена в новый бот"
+    fi
+
+    # Настройка PostgreSQL
+    setup_postgresql
+
     # Запись config.py
     write_config
+
+    # Слияние настроек старого config.py с новым шаблоном
+    merge_old_config
 
     # Виртуальное окружение и зависимости
     setup_venv

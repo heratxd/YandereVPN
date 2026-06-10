@@ -140,8 +140,6 @@ async def main():
     # Удаляем старые обновления и запускаем polling
     await bot.delete_webhook(drop_pending_updates=True)
     
-
-    
     # Запускаем планировщик ежедневных задач (статистика + бэкапы)
     daily_tasks = asyncio.create_task(run_daily_tasks(bot))
     # Запускаем планировщик проверки обновлений
@@ -149,12 +147,23 @@ async def main():
     # Запускаем планировщик синхронизации трафика (каждые 5 мин)
     traffic_tasks = asyncio.create_task(run_traffic_sync_scheduler(bot))
     
+    # Запускаем webhook-сервер приёма оплат
+    from bot.services.webhook_server import start_webhook_server
+    try:
+        webhook_runner = await start_webhook_server(bot)
+    except Exception as wh_err:
+        logger.error(f"Не удалось запустить webhook-сервер: {wh_err}")
+        webhook_runner = None
+    
     try:
         await dp.start_polling(bot)
     finally:
         daily_tasks.cancel()
         update_tasks.cancel()
         traffic_tasks.cancel()
+        if webhook_runner:
+            logger.info("🛑 Останавливаем webhook-сервер...")
+            await webhook_runner.cleanup()
         await bot.session.close()
 
 

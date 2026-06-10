@@ -257,10 +257,16 @@ async def create_qr_payment_flow(
             return
 
         # Формирование текста
+        if payment_type in ('cryptobot', 'xrocket'):
+            price_val = (tariff.get('price_cents') or 0) / 100
+            price_str = f"${price_val:g}"
+        else:
+            price_str = f"{int(price_rub)} ₽"
+
         text = format_qr_payment_text(
             title=title,
             tariff_name=escape_html(tariff['name']),
-            price_str=f"{int(price_rub)} ₽",
+            price_str=price_str,
             days=tariff['duration_days'],
             qr_url=qr_url,
             key_name=escape_html(key['display_name']) if key else None,
@@ -410,7 +416,10 @@ async def check_qr_payment_flow(
         else:
             from database.requests import get_tariff_by_id
             _tariff = get_tariff_by_id(order.get('tariff_id'))
-            referral_amount = int((_tariff.get('price_rub', 0) or 0) * 100) if _tariff else 0
+            if payment_type in ('cryptobot', 'xrocket'):
+                referral_amount = _tariff.get('price_cents', 0) if _tariff else 0
+            else:
+                referral_amount = int((_tariff.get('price_rub', 0) or 0) * 100) if _tariff else 0
 
         logger.info(f"{payment_type} referral: order={order_id}, referral_amount={referral_amount}")
 

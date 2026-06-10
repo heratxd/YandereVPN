@@ -146,6 +146,114 @@ async def cmd_start(message: Message, state: FSMContext, command: CommandObject)
                 await safe_edit_or_send(message, '❌ Произошла ошибка при обработке платежа.', force_new=True)
         return
 
+    # CryptoBot deep-link
+    if args and args.startswith('cb_'):
+        from database.requests import find_latest_pending_cryptobot_order_for_user
+        from bot.handlers.user.payments.cryptobot import _run_cryptobot_check
+
+        order = find_latest_pending_cryptobot_order_for_user(user['id'])
+        if not order:
+            await safe_edit_or_send(
+                message,
+                '⚠️ <b>Активная оплата CryptoBot не найдена</b>\n\n'
+                'Возможно, платёж уже обработан или ещё не создан.\n'
+                'Откройте «Купить ключ» и попробуйте снова.',
+                force_new=True
+            )
+            try:
+                await _render_main_page(message, force_new=True)
+            except Exception:
+                pass
+            return
+
+        try:
+            await _run_cryptobot_check(
+                message, state,
+                order_id=order['order_id'],
+                telegram_id=message.from_user.id,
+                callback=None,
+            )
+        except Exception as e:
+            logger.exception(f'Ошибка обработки cb_ deep-link: {e}')
+            await safe_edit_or_send(
+                message,
+                '❌ Произошла ошибка при проверке платежа CryptoBot.',
+                force_new=True
+            )
+        return
+
+    # xRocket deep-link
+    if args and args.startswith('xr_'):
+        from database.requests import find_latest_pending_xrocket_order_for_user
+        from bot.handlers.user.payments.xrocket import _run_xrocket_check
+
+        order = find_latest_pending_xrocket_order_for_user(user['id'])
+        if not order:
+            await safe_edit_or_send(
+                message,
+                '⚠️ <b>Активная оплата xRocket не найдена</b>\n\n'
+                'Возможно, платёж уже обработан или ещё не создан.\n'
+                'Откройте «Купить ключ» и попробуйте снова.',
+                force_new=True
+            )
+            try:
+                await _render_main_page(message, force_new=True)
+            except Exception:
+                pass
+            return
+
+        try:
+            await _run_xrocket_check(
+                message, state,
+                order_id=order['order_id'],
+                telegram_id=message.from_user.id,
+                callback=None,
+            )
+        except Exception as e:
+            logger.exception(f'Ошибка обработки xr_ deep-link: {e}')
+            await safe_edit_or_send(
+                message,
+                '❌ Произошла ошибка при проверке платежа xRocket.',
+                force_new=True
+            )
+        return
+
+    # CrystalPay deep-link
+    if args and args.startswith('cp_'):
+        from database.requests import find_latest_pending_crystalpay_order_for_user
+        from bot.handlers.user.payments.crystalpay import _run_crystalpay_check
+
+        order = find_latest_pending_crystalpay_order_for_user(user['id'])
+        if not order:
+            await safe_edit_or_send(
+                message,
+                '⚠️ <b>Активная оплата CrystalPay не найдена</b>\n\n'
+                'Возможно, платёж уже обработан или ещё не создан.\n'
+                'Откройте «Купить ключ» и попробуйте снова.',
+                force_new=True
+            )
+            try:
+                await _render_main_page(message, force_new=True)
+            except Exception:
+                pass
+            return
+
+        try:
+            await _run_crystalpay_check(
+                message, state,
+                order_id=order['order_id'],
+                telegram_id=message.from_user.id,
+                callback=None,
+            )
+        except Exception as e:
+            logger.exception(f'Ошибка обработки cp_ deep-link: {e}')
+            await safe_edit_or_send(
+                message,
+                '❌ Произошла ошибка при проверке платежа CrystalPay.',
+                force_new=True
+            )
+        return
+
     # Cardlink deep-link: пользователь вернулся по ссылке cl_Success/cl_Fail/cl_Result.
     # Бот НЕ зачисляет платёж автоматически — а запускает ту же проверку, что и
     # кнопка «✅ Я оплатил».

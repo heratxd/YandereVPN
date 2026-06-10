@@ -24,6 +24,11 @@ from database.requests import (
     is_wata_enabled,
     is_platega_enabled,
     is_cardlink_enabled,
+    is_cryptobot_enabled,
+    is_xrocket_enabled,
+    is_crystalpay_enabled,
+    is_cryptobot_sandbox,
+    is_xrocket_sandbox,
 )
 from bot.states.admin_states import (
     AdminStates,
@@ -42,6 +47,9 @@ from bot.keyboards.admin import (
     wata_management_kb,
     platega_management_kb,
     cardlink_management_kb,
+    cryptobot_management_kb,
+    xrocket_management_kb,
+    crystalpay_management_kb,
     back_and_home_kb
 )
 from bot.utils.text import escape_html, safe_edit_or_send
@@ -107,6 +115,9 @@ async def show_payments_menu(callback: CallbackQuery, state: FSMContext):
     wata = is_wata_enabled()
     platega = is_platega_enabled()
     cardlink = is_cardlink_enabled()
+    cryptobot = is_cryptobot_enabled()
+    xrocket = is_xrocket_enabled()
+    crystalpay = is_crystalpay_enabled()
 
     text = (
         "💳 <b>Настройки оплаты</b>\n\n"
@@ -153,6 +164,21 @@ async def show_payments_menu(callback: CallbackQuery, state: FSMContext):
     else:
         text += "⚪ <b>Cardlink (Карта/СБП)</b>\n"
 
+    if cryptobot:
+        text += f"🟢 <b>CryptoBot (USDT)</b>{' (Sandbox)' if is_cryptobot_sandbox() else ''}\n"
+    else:
+        text += "⚪ <b>CryptoBot (USDT)</b>\n"
+
+    if xrocket:
+        text += f"🟢 <b>xRocket (USDT)</b>{' (Sandbox)' if is_xrocket_sandbox() else ''}\n"
+    else:
+        text += "⚪ <b>xRocket (USDT)</b>\n"
+
+    if crystalpay:
+        text += "🟢 <b>CrystalPay (РФ/Крипта)</b>\n"
+    else:
+        text += "⚪ <b>CrystalPay (РФ/Крипта)</b>\n"
+
     if demo:
         text += "🟢 <b>Демо оплата (РФ)</b>\n"
     else:
@@ -162,7 +188,10 @@ async def show_payments_menu(callback: CallbackQuery, state: FSMContext):
 
     await safe_edit_or_send(callback.message,
         text,
-        reply_markup=payments_menu_kb(stars, crypto, cards, qr, monthly_reset, demo, wata, platega, cardlink)
+        reply_markup=payments_menu_kb(
+            stars, crypto, cards, qr, monthly_reset, demo, wata, platega, cardlink,
+            cryptobot_enabled=cryptobot, xrocket_enabled=xrocket, crystalpay_enabled=crystalpay
+        )
     )
     await callback.answer()
 
@@ -1167,17 +1196,16 @@ async def show_wata_management_menu(callback: CallbackQuery, state: FSMContext):
         "• <b>Документы:</b> Пользовательское соглашение и Политику конфиденциальности (ссылки доступны в руководстве пользователя ADMIN_GUIDE.md).\n"
         "• <b>Техподдержка:</b> Кнопка поддержки должна вести в личку (вашу или саппорта), а не в канал.\n"
         "• <b>Тарифы:</b> Прописать тарифы в рублях (можно просто текстом в описании бота).\n"
-        "• <b>Новостной канал:</b> Убрать ссылку на канал Плюшкина или заменить на свой новостной канал.\n\n"
+        "• <b>Новостной канал:</b> Укажите ссылку на свой новостной канал.\n\n"
         "<b>2. Верификационный платёж (разовый):</b>\n"
         "• Стандарт: 500$ (50.000₽)\n"
-        "• <b>По рекомендации YadrenoVPN: 150$ (15.000₽)</b>\n"
         "• <i>Платить только после одобрения проекта!</i>\n\n"
         "<b>3. Какие документы нужны:</b>\n"
         "• Никаких. Паспорта, ИП, самозанятость, банковские счета - не требуются.\n"
         "• Достаточно: Email и кошелёк TRC20 (USDT).\n\n"
         "<b>4. Подключение:</b>\n"
         "• Сайт: <a href=\"https://wata.pro/\">wata.pro</a>\n"
-        "• Менеджер в Telegram: @Nikita_WATA (напишите, что вы от <b>YadrenoVPN</b> для снижения платежа до 150$).\n"
+        "• Менеджер в Telegram: @Nikita_WATA.\n"
         "• В личном кабинете создайте JWT-токен (Профиль → API) и укажите его здесь.\n\n"
         f"{status_emoji} Статус: <b>{status_text}</b>\n"
         f"🔑 JWT-токен: {token_display}\n\n"
@@ -1321,9 +1349,8 @@ async def show_platega_management_menu(callback: CallbackQuery, state: FSMContex
         "Минимальная сумма платежа: <b>10 ₽</b>.\n\n"
         "📋 <b>Как получить доступ:</b>\n"
         "1. Напишите менеджеру <b>@platega_connect_manager</b>\n"
-        "2. Скажите, что вы от <b>@plushkinva</b> — получите скидку на подключение.\n"
-        "3. После подключения скопируйте <b>Merchant ID</b> и <b>Secret</b> из ЛК.\n"
-        "4. Укажите их в кнопках ниже.\n\n"
+        "2. После подключения скопируйте <b>Merchant ID</b> и <b>Secret</b> из ЛК.\n"
+        "3. Укажите их в кнопках ниже.\n\n"
         f"{status_emoji} Статус: <b>{status_text}</b>\n"
         f"🆔 Merchant ID: {merchant_display}\n"
         f"🔐 Secret: {secret_display}\n\n"
@@ -1713,5 +1740,461 @@ async def cardlink_setup_api_token_handler(message: Message, state: FSMContext):
 
     fake = FakeCallback(menu_message, message.from_user)
     await show_cardlink_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА CRYPTOBOT
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_cryptobot")
+async def show_cryptobot_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления CryptoBot."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_cryptobot_enabled()
+    is_sandbox = is_cryptobot_sandbox()
+    token = get_setting('cryptobot_api_token', '') or ''
+    masked_token = f"{token[:6]}...{token[-4:]}" if len(token) > 10 else "—"
+
+    text = (
+        "🤖 <b>Управление оплатой через CryptoBot (USDT)</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Режим: {'🧪 Sandbox (Testnet)' if is_sandbox else '🟢 Production (Mainnet)'}\n"
+        f"API-токен: <code>{masked_token}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите в @CryptoBot (или @CryptoTestnetBot для Sandbox).\n"
+        "2. Откройте Crypto Pay -> My Apps и создайте новое приложение.\n"
+        "3. Скопируйте полученный API-токен и введите его здесь."
+    )
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=cryptobot_management_kb(is_enabled, is_sandbox),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_cryptobot_mgmt_toggle")
+async def cryptobot_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение CryptoBot-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_cryptobot_enabled()
+    if not current:
+        token = get_setting('cryptobot_api_token', '')
+        if not token:
+            await callback.answer("⚠️ Сначала настройте API-токен", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('cryptobot_enabled', new_value)
+    await callback.answer("Статус CryptoBot изменён")
+    await show_cryptobot_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_cryptobot_mgmt_toggle_sandbox")
+async def cryptobot_mgmt_toggle_sandbox(callback: CallbackQuery, state: FSMContext):
+    """Переключение Sandbox (Testnet) режима для CryptoBot."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_cryptobot_sandbox()
+    new_value = '0' if current else '1'
+    set_setting('cryptobot_sandbox', new_value)
+    await callback.answer("Режим Sandbox изменён")
+    await show_cryptobot_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_cryptobot_mgmt_edit_token")
+async def cryptobot_edit_token(callback: CallbackQuery, state: FSMContext):
+    """Запрос API-токена CryptoBot."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.cryptobot_setup_token)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите API-токен CryptoBot</b>\n\n"
+        "Отправьте токен вашего приложения из @CryptoBot или @CryptoTestnetBot.\n\n"
+        "<i>Значение будет частично скрыто после сохранения.</i>",
+        reply_markup=back_and_home_kb("admin_payments_cryptobot"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.cryptobot_setup_token)
+async def cryptobot_setup_token_handler(message: Message, state: FSMContext):
+    """Обработка ввода API-токена CryptoBot."""
+    from bot.utils.text import get_message_text_for_storage
+
+    token = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(token) < 8:
+        await safe_edit_or_send(message, "❌ Слишком короткий токен. Попробуйте ещё раз.")
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    set_setting('cryptobot_api_token', token)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_cryptobot_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА XROCKET
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_xrocket")
+async def show_xrocket_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления xRocket."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_xrocket_enabled()
+    is_sandbox = is_xrocket_sandbox()
+    token = get_setting('xrocket_api_key', '') or ''
+    masked_token = f"{token[:6]}...{token[-4:]}" if len(token) > 10 else "—"
+
+    text = (
+        "🚀 <b>Управление оплатой через xRocket (USDT)</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Режим: {'🧪 Sandbox (Demo)' if is_sandbox else '🟢 Production (Mainnet)'}\n"
+        f"API-ключ: <code>{masked_token}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите в @RocketBot (или @RocketBetaBot для Sandbox).\n"
+        "2. Откройте Rocket Pay -> Web API -> Create App.\n"
+        "3. Скопируйте API Key и отправьте его боту."
+    )
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=xrocket_management_kb(is_enabled, is_sandbox),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_xrocket_mgmt_toggle")
+async def xrocket_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение xRocket-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_xrocket_enabled()
+    if not current:
+        token = get_setting('xrocket_api_key', '')
+        if not token:
+            await callback.answer("⚠️ Сначала настройте API-ключ", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('xrocket_enabled', new_value)
+    await callback.answer("Статус xRocket изменён")
+    await show_xrocket_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_xrocket_mgmt_toggle_sandbox")
+async def xrocket_mgmt_toggle_sandbox(callback: CallbackQuery, state: FSMContext):
+    """Переключение Sandbox (Demo) режима для xRocket."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_xrocket_sandbox()
+    new_value = '0' if current else '1'
+    set_setting('xrocket_sandbox', new_value)
+    await callback.answer("Режим Sandbox изменён")
+    await show_xrocket_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_xrocket_mgmt_edit_token")
+async def xrocket_edit_token(callback: CallbackQuery, state: FSMContext):
+    """Запрос API-ключа xRocket."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.xrocket_setup_token)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите API-ключ xRocket</b>\n\n"
+        "Отправьте ваш API-ключ (API Key) из @RocketBot или @RocketBetaBot.\n\n"
+        "<i>Значение будет частично скрыто после сохранения.</i>",
+        reply_markup=back_and_home_kb("admin_payments_xrocket"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.xrocket_setup_token)
+async def xrocket_setup_token_handler(message: Message, state: FSMContext):
+    """Обработка ввода API-ключа xRocket."""
+    from bot.utils.text import get_message_text_for_storage
+
+    token = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(token) < 8:
+        await safe_edit_or_send(message, "❌ Слишком короткий токен. Попробуйте ещё раз.")
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    set_setting('xrocket_api_key', token)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_xrocket_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА CRYSTALPAY
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_crystalpay")
+async def show_crystalpay_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления CrystalPay."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_crystalpay_enabled()
+    login = get_setting('crystalpay_login', '') or ''
+    secret = get_setting('crystalpay_secret', '') or ''
+    masked_secret = f"{secret[:4]}...{secret[-4:]}" if len(secret) > 8 else "—"
+
+    text = (
+        "💎 <b>Управление оплатой через CrystalPay (РФ/Крипта)</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Имя кассы (Login): <code>{login or '—'}</code>\n"
+        f"Секретный ключ (Secret): <code>{masked_secret}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите на сайт crystalpay.io и создайте кассу.\n"
+        "2. Скопируйте имя кассы (Login) и Секретный ключ (Secret API / Секретный ключ 1).\n"
+        "3. Введите эти значения в соответствующих полях настройки."
+    )
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=crystalpay_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_crystalpay_mgmt_toggle")
+async def crystalpay_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение CrystalPay-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_crystalpay_enabled()
+    if not current:
+        login = get_setting('crystalpay_login', '')
+        secret = get_setting('crystalpay_secret', '')
+        if not login or not secret:
+            await callback.answer("⚠️ Сначала настройте Login и Secret кассы", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('crystalpay_enabled', new_value)
+    await callback.answer("Статус CrystalPay изменён")
+    await show_crystalpay_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_crystalpay_mgmt_edit_login")
+async def crystalpay_edit_login(callback: CallbackQuery, state: FSMContext):
+    """Запрос Login кассы CrystalPay."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.crystalpay_setup_login)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите имя кассы (Login) CrystalPay</b>\n\n"
+        "Скопируйте имя кассы (например: my_vpn_shop) из настроек CrystalPay.\n\n"
+        "<i>Значение будет сохранено в базе данных.</i>",
+        reply_markup=back_and_home_kb("admin_payments_crystalpay"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.crystalpay_setup_login)
+async def crystalpay_setup_login_handler(message: Message, state: FSMContext):
+    """Обработка ввода Login CrystalPay."""
+    from bot.utils.text import get_message_text_for_storage
+
+    login = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(login) < 2:
+        await safe_edit_or_send(message, "❌ Слишком короткое имя. Попробуйте ещё раз.")
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    set_setting('crystalpay_login', login)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_crystalpay_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_crystalpay_mgmt_edit_secret")
+async def crystalpay_edit_secret(callback: CallbackQuery, state: FSMContext):
+    """Запрос Secret кассы CrystalPay."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.crystalpay_setup_secret)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите Секретный ключ (Secret) CrystalPay</b>\n\n"
+        "Получите секретный API ключ в настройках вашей кассы на crystalpay.io.\n\n"
+        "<i>Значение будет частично скрыто после сохранения.</i>",
+        reply_markup=back_and_home_kb("admin_payments_crystalpay"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.crystalpay_setup_secret)
+async def crystalpay_setup_secret_handler(message: Message, state: FSMContext):
+    """Обработка ввода Secret CrystalPay."""
+    from bot.utils.text import get_message_text_for_storage
+
+    secret = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(secret) < 8:
+        await safe_edit_or_send(message, "❌ Слишком короткий секретный ключ. Попробуйте ещё раз.")
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    set_setting('crystalpay_secret', secret)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_crystalpay_management_menu(fake, state)
 
 

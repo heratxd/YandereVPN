@@ -4,20 +4,9 @@ from typing import List, Dict, Any, Optional
 
 from .admin_misc import back_button, home_button, cancel_button
 
-def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: bool, qr_enabled: bool=False, monthly_reset_enabled: bool=False, demo_enabled: bool=False, wata_enabled: bool=False, platega_enabled: bool=False, cardlink_enabled: bool=False) -> InlineKeyboardMarkup:
+def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: bool, qr_enabled: bool=False, monthly_reset_enabled: bool=False, demo_enabled: bool=False, wata_enabled: bool=False, platega_enabled: bool=False, cardlink_enabled: bool=False, cryptobot_enabled: bool=False, xrocket_enabled: bool=False, crystalpay_enabled: bool=False) -> InlineKeyboardMarkup:
     """
     Главное меню раздела оплат.
-
-    Args:
-        stars_enabled: Включены ли Telegram Stars
-        crypto_enabled: Включены ли крипто-платежи
-        cards_enabled: Включена ли оплата картами (ЮКасса Telegram Payments)
-        qr_enabled: Включена ли прямая QR-оплата ЮКасса
-        monthly_reset_enabled: Включён ли ежемесячный автосброс трафика
-        demo_enabled: Включена ли демо-оплата
-        wata_enabled: Включена ли оплата через WATA
-        platega_enabled: Включена ли оплата через Platega
-        cardlink_enabled: Включена ли оплата через Cardlink
     """
     builder = InlineKeyboardBuilder()
     stars_status = '✅' if stars_enabled else '❌'
@@ -34,6 +23,12 @@ def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: b
     builder.row(InlineKeyboardButton(text=f'💸 Platega (СБП): {platega_status}', callback_data='admin_payments_platega'))
     cardlink_status = '✅' if cardlink_enabled else '❌'
     builder.row(InlineKeyboardButton(text=f'🔗 Cardlink (Карта/СБП): {cardlink_status}', callback_data='admin_payments_cardlink'))
+    cryptobot_status = '✅' if cryptobot_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🤖 CryptoBot (USDT): {cryptobot_status}', callback_data='admin_payments_cryptobot'))
+    xrocket_status = '✅' if xrocket_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🚀 xRocket (USDT): {xrocket_status}', callback_data='admin_payments_xrocket'))
+    crystalpay_status = '✅' if crystalpay_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'💎 CrystalPay (РФ/Крипта): {crystalpay_status}', callback_data='admin_payments_crystalpay'))
     demo_status = '✅' if demo_enabled else '❌'
     builder.row(InlineKeyboardButton(text=f'💳 Демо оплата (РФ): {demo_status}', callback_data='admin_payments_toggle_demo'))
     reset_status = '✅' if monthly_reset_enabled else '❌'
@@ -42,6 +37,47 @@ def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: b
     builder.row(InlineKeyboardButton(text='📋 Тарифы', callback_data='admin_tariffs'))
     builder.row(InlineKeyboardButton(text='🎁 Пробная подписка', callback_data='admin_trial'))
     builder.row(back_button('admin_panel'), home_button())
+    return builder.as_markup()
+
+
+def cryptobot_management_kb(is_enabled: bool, is_sandbox: bool) -> InlineKeyboardMarkup:
+    """
+    Меню управления оплатой через CryptoBot.
+    """
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_cryptobot_mgmt_toggle'))
+    sandbox_text = 'Выйти из Sandbox ⚪' if is_sandbox else 'Войти в Sandbox 🧪'
+    builder.row(InlineKeyboardButton(text=sandbox_text, callback_data='admin_cryptobot_mgmt_toggle_sandbox'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить API-токен', callback_data='admin_cryptobot_mgmt_edit_token'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def xrocket_management_kb(is_enabled: bool, is_sandbox: bool) -> InlineKeyboardMarkup:
+    """
+    Меню управления оплатой через xRocket.
+    """
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_xrocket_mgmt_toggle'))
+    sandbox_text = 'Выйти из Sandbox ⚪' if is_sandbox else 'Войти in Sandbox 🧪'
+    builder.row(InlineKeyboardButton(text=sandbox_text, callback_data='admin_xrocket_mgmt_toggle_sandbox'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить API-токен', callback_data='admin_xrocket_mgmt_edit_token'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def crystalpay_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """
+    Меню управления оплатой через CrystalPay.
+    """
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_crystalpay_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить Login', callback_data='admin_crystalpay_mgmt_edit_login'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Secret', callback_data='admin_crystalpay_mgmt_edit_secret'))
+    builder.row(back_button('admin_payments'), home_button())
     return builder.as_markup()
 
 

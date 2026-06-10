@@ -20,7 +20,8 @@ from database.requests import (
     find_order_by_order_id, complete_order, is_order_already_paid,
     get_setting,
     get_yookassa_credentials, get_wata_token, get_platega_credentials,
-    get_cardlink_credentials,
+    get_cardlink_credentials, get_cryptobot_token, is_cryptobot_sandbox,
+    get_xrocket_token, is_xrocket_sandbox, get_crystalpay_credentials,
     is_referral_enabled, get_referral_reward_type, get_active_referral_levels,
     get_user_referrer, get_user_referral_coefficient, get_user_balance,
     add_to_balance, deduct_from_balance, add_days_to_first_active_key,
@@ -38,6 +39,14 @@ WATA_API_URL = "https://api.wata.pro/api/h2h"
 PLATEGA_API_URL = "https://app.platega.io"
 PLATEGA_PAYMENT_METHOD_SBP = 2
 CARDLINK_API_URL = "https://cardlink.link"
+
+CRYPTOBOT_API_URL = "https://pay.cryptobot.net/api"
+CRYPTOBOT_TESTNET_API_URL = "https://testnet-pay.cryptobot.net/api"
+
+XROCKET_API_URL = "https://pay.xrocket.tg/api"
+XROCKET_TESTNET_API_URL = "https://demo-pay.xrocket.tg/api"
+
+CRYSTALPAY_API_URL = "https://api.crystalpay.io/v2"
 
 # Алфавит для Base62 кодирования
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -1090,6 +1099,370 @@ async def check_cardlink_payment_status(bill_id: str) -> str:
             return 'pending'
 
 
+async def create_cryptobot_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Создаёт счёт (invoice) в CryptoBot Pay API.
+    """
+    amount_usd = amount_rub
+    token = get_cryptobot_token()
+    if not token:
+        raise ValueError("CryptoBot: не настроен api_token")
+    
+    sandbox = is_cryptobot_sandbox()
+    base_url = CRYPTOBOT_TESTNET_API_URL if sandbox else CRYPTOBOT_API_URL
+    
+    headers = {
+        "Crypto-Pay-API-Token": token,
+        "Accept": "application/json",
+    }
+    
+    payload = {
+        "asset": "USDT",
+        "amount": f"{amount_usd:.2f}",
+        "payload": order_id,
+        "description": description[:255]
+    }
+    
+    url = f"{base_url}/createInvoice"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload, headers=headers) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"CryptoBot API: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("CryptoBot API вернул некорректный ответ")
+                
+            if response.status != 200 or not data.get("ok"):
+                error_desc = data.get("error", {}).get("name", "Неизвестная ошибка")
+                logger.error(f"CryptoBot API ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"CryptoBot API ошибка: {error_desc}")
+                
+            result = data.get("result", {})
+            invoice_id = result.get("invoice_id")
+            pay_url = result.get("pay_url")
+            
+            if not invoice_id or not pay_url:
+                logger.error(f"CryptoBot API не вернул invoice_id/pay_url: {data}")
+                raise RuntimeError("CryptoBot API не вернул данные платёжной ссылки")
+                
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pay_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            qr_image_data = bio.getvalue()
+            
+            logger.info(f"CryptoBot счёт создан: invoice_id={invoice_id}, order_id={order_id}, amount={amount_usd} USDT")
+            
+            return {
+                'cryptobot_invoice_id': str(invoice_id),
+                'qr_image_data': qr_image_data,
+                'qr_url': pay_url,
+                'status': str(result.get('status', 'active')).lower()
+            }
+
+
+async def check_cryptobot_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в CryptoBot.
+    """
+    token = get_cryptobot_token()
+    if not token:
+        raise ValueError("CryptoBot: не настроен api_token")
+        
+    sandbox = is_cryptobot_sandbox()
+    base_url = CRYPTOBOT_TESTNET_API_URL if sandbox else CRYPTOBOT_API_URL
+    
+    headers = {
+        "Crypto-Pay-API-Token": token,
+        "Accept": "application/json",
+    }
+    
+    url = f"{base_url}/getInvoices"
+    params = {"invoice_ids": invoice_id}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params, headers=headers) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"CryptoBot статус: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("CryptoBot API вернул некорректный ответ")
+                
+            if response.status != 200 or not data.get("ok"):
+                error_desc = data.get("error", {}).get("name", "Неизвестная ошибка")
+                logger.error(f"CryptoBot статус ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"CryptoBot API ошибка: {error_desc}")
+                
+            items = data.get("result", {}).get("items", [])
+            if not items:
+                logger.error(f"CryptoBot статус: счёт {invoice_id} не найден")
+                return 'canceled'
+                
+            invoice = items[0]
+            status = str(invoice.get('status', '')).lower()
+            
+            logger.debug(f"CryptoBot invoice {invoice_id}: status={status}")
+            
+            if status == 'paid':
+                return 'succeeded'
+            if status in ('expired', 'cancelled'):
+                return 'canceled'
+            return 'pending'
+
+
+async def create_xrocket_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Создаёт счёт в xRocket Pay API.
+    """
+    amount_usd = amount_rub
+    api_key = get_xrocket_token()
+    if not api_key:
+        raise ValueError("xRocket: не настроен api_key")
+        
+    sandbox = is_xrocket_sandbox()
+    base_url = XROCKET_TESTNET_API_URL if sandbox else XROCKET_API_URL
+    
+    headers = {
+        "rocket-pay-api-key": api_key,
+        "Accept": "application/json",
+    }
+    
+    payload = {
+        "amount": float(amount_usd),
+        "currency": "USDT",
+        "description": description[:255],
+        "externalId": order_id
+    }
+    
+    url = f"{base_url}/v1/tg-payment/invoice"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload, headers=headers) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"xRocket API: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("xRocket API вернул некорректный ответ")
+                
+            if response.status not in (200, 201) or not data.get("success"):
+                error_desc = data.get("message") or data.get("error", {}).get("message") or "Неизвестная ошибка"
+                logger.error(f"xRocket API ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"xRocket API ошибка: {error_desc}")
+                
+            result = data.get("data", {})
+            invoice_id = result.get("id")
+            pay_url = result.get("link")
+            
+            if not invoice_id or not pay_url:
+                logger.error(f"xRocket API не вернул invoice_id/pay_url: {data}")
+                raise RuntimeError("xRocket API не вернул данные платёжной ссылки")
+                
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pay_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            qr_image_data = bio.getvalue()
+            
+            logger.info(f"xRocket счёт создан: invoice_id={invoice_id}, order_id={order_id}, amount={amount_usd} USDT")
+            
+            return {
+                'xrocket_invoice_id': str(invoice_id),
+                'qr_image_data': qr_image_data,
+                'qr_url': pay_url,
+                'status': str(result.get('status', 'ACTIVE')).upper()
+            }
+
+
+async def check_xrocket_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в xRocket.
+    """
+    api_key = get_xrocket_token()
+    if not api_key:
+        raise ValueError("xRocket: не настроен api_key")
+        
+    sandbox = is_xrocket_sandbox()
+    base_url = XROCKET_TESTNET_API_URL if sandbox else XROCKET_API_URL
+    
+    headers = {
+        "rocket-pay-api-key": api_key,
+        "Accept": "application/json",
+    }
+    
+    url = f"{base_url}/v1/tg-payment/invoice/{invoice_id}"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"xRocket статус: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("xRocket API вернул некорректный ответ")
+                
+            if response.status != 200 or not data.get("success"):
+                error_desc = data.get("message") or data.get("error", {}).get("message") or "Неизвестная ошибка"
+                logger.error(f"xRocket статус ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"xRocket API ошибка: {error_desc}")
+                
+            result = data.get("data", {})
+            status = str(result.get('status', '')).upper()
+            
+            logger.debug(f"xRocket invoice {invoice_id}: status={status}")
+            
+            if status == 'PAID':
+                return 'succeeded'
+            if status in ('EXPIRED', 'CANCELLED'):
+                return 'canceled'
+            return 'pending'
+
+
+async def create_crystalpay_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Создаёт счёт в CrystalPay API.
+    """
+    login, secret = get_crystalpay_credentials()
+    if not login or not secret:
+        raise ValueError("CrystalPay: не настроены login или secret")
+        
+    payload = {
+        "auth_login": login,
+        "auth_secret": secret,
+        "amount": float(amount_rub),
+        "type": "purchase",
+        "description": description[:255]
+    }
+    
+    url = f"{CRYSTALPAY_API_URL}/invoice/create/"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"CrystalPay API: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("CrystalPay API вернул некорректный ответ")
+                
+            if response.status != 200 or data.get("error", False):
+                error_desc = "Неизвестная ошибка"
+                if isinstance(data, dict) and data.get("errors"):
+                    error_desc = ", ".join(data.get("errors"))
+                elif isinstance(data, dict) and data.get("message"):
+                    error_desc = data.get("message")
+                logger.error(f"CrystalPay API ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"CrystalPay API ошибка: {error_desc}")
+                
+            invoice_id = data.get("id")
+            pay_url = data.get("url")
+            
+            if not invoice_id or not pay_url:
+                logger.error(f"CrystalPay API не вернул id/url: {data}")
+                raise RuntimeError("CrystalPay API не вернул данные платёжной ссылки")
+                
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pay_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            qr_image_data = bio.getvalue()
+            
+            logger.info(f"CrystalPay счёт создан: invoice_id={invoice_id}, order_id={order_id}, amount={amount_rub} RUB")
+            
+            return {
+                'crystalpay_invoice_id': str(invoice_id),
+                'qr_image_data': qr_image_data,
+                'qr_url': pay_url,
+                'status': str(data.get('state', 'not_payed')).lower()
+            }
+
+
+async def check_crystalpay_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в CrystalPay.
+    """
+    login, secret = get_crystalpay_credentials()
+    if not login or not secret:
+        raise ValueError("CrystalPay: не настроены login или secret")
+        
+    payload = {
+        "auth_login": login,
+        "auth_secret": secret,
+        "id": invoice_id
+    }
+    
+    url = f"{CRYSTALPAY_API_URL}/invoice/info/"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"CrystalPay статус: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("CrystalPay API вернул некорректный ответ")
+                
+            if response.status != 200 or data.get("error", False):
+                error_desc = "Неизвестная ошибка"
+                if isinstance(data, dict) and data.get("errors"):
+                    error_desc = ", ".join(data.get("errors"))
+                elif isinstance(data, dict) and data.get("message"):
+                    error_desc = data.get("message")
+                logger.error(f"CrystalPay статус ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"CrystalPay API ошибка: {error_desc}")
+                
+            state = str(data.get('state', '')).lower()
+            
+            logger.debug(f"CrystalPay invoice {invoice_id}: state={state}")
+            
+            if state == 'payed':
+                return 'succeeded'
+            if state == 'expired':
+                return 'canceled'
+            if state in ('not_payed', 'processing'):
+                return 'pending'
+            return 'pending'
+
+
 def convert_to_rub_cents(amount_raw: int, payment_type: str, usd_rub_rate: int) -> int:
     """
     Конвертировать сырую сумму в копейки рублей.
@@ -1105,7 +1478,7 @@ def convert_to_rub_cents(amount_raw: int, payment_type: str, usd_rub_rate: int) 
     if payment_type == 'stars':
         usd_cents = int(amount_raw * STAR_TO_USD * 100)
         return usd_cents * usd_rub_rate // 100
-    elif payment_type == 'crypto':
+    elif payment_type in ('crypto', 'cryptobot', 'xrocket'):
         usd_cents = amount_raw
         return usd_cents * usd_rub_rate // 100
     else:
