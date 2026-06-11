@@ -284,7 +284,7 @@ def balance_payment_kb(
     return builder.as_markup()
 
 
-def tariff_select_kb(tariffs: list, back_callback: str = "buy_key", order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, groups_data: list = None, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False, is_cryptobot: bool = False, is_xrocket: bool = False, is_crystalpay: bool = False) -> InlineKeyboardMarkup:
+def tariff_select_kb(tariffs: list, back_callback: str = "buy_key", order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, groups_data: list = None, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False, is_cryptobot: bool = False, is_xrocket: bool = False, is_crystalpay: bool = False, is_lava: bool = False, is_freekassa: bool = False, is_rukassa: bool = False, is_payok: bool = False, is_nowpayments: bool = False, is_robokassa: bool = False, is_yoomoney: bool = False) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора тарифа для оплаты Stars, Картами, Криптой или Балансом.
 
@@ -376,6 +376,55 @@ def tariff_select_kb(tariffs: list, back_callback: str = "buy_key", order_id: st
                 price_display = f"{price_rub} ₽"
                 prefix = "crystalpay_pay"
                 emoji = '💎'
+            elif is_lava:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 10:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "lava_pay"
+                emoji = '🌋'
+            elif is_freekassa:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 10:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "freekassa_pay"
+                emoji = '💸'
+            elif is_rukassa:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 10:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "rukassa_pay"
+                emoji = '🇷🇺'
+            elif is_payok:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 10:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "payok_pay"
+                emoji = '⚡'
+            elif is_nowpayments:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 10:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "nowpayments_pay"
+                emoji = '🪙'
+            elif is_robokassa:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 10:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "robokassa_pay"
+                emoji = '🔴'
+            elif is_yoomoney:
+                price_rub = tariff.get('price_rub')
+                if price_rub is None or price_rub < 2:
+                    continue
+                price_display = f"{price_rub} ₽"
+                prefix = "yoomoney_pay"
+                emoji = '🟣'
             elif is_balance:
                 price_rub = tariff.get('price_rub')
                 if price_rub is None or price_rub <= 1:
@@ -568,7 +617,7 @@ def key_show_kb(key_id: int = None) -> InlineKeyboardMarkup:
     return key_issued_kb()
 
 
-def renew_tariff_select_kb(tariffs: list, key_id: int, order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False, is_cryptobot: bool = False, is_xrocket: bool = False, is_crystalpay: bool = False) -> InlineKeyboardMarkup:
+def renew_tariff_select_kb(tariffs: list, key_id: int, order_id: str = None, is_cards: bool = False, is_crypto: bool = False, is_balance: bool = False, is_qr: bool = False, is_demo: bool = False, is_wata: bool = False, is_platega: bool = False, is_cardlink: bool = False, is_cryptobot: bool = False, is_xrocket: bool = False, is_crystalpay: bool = False, is_lava: bool = False, is_freekassa: bool = False, is_rukassa: bool = False, is_payok: bool = False, is_nowpayments: bool = False, is_robokassa: bool = False, is_yoomoney: bool = False) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора тарифа для продления ключа (для Stars, Карт или Баланса).
 
@@ -646,6 +695,55 @@ def renew_tariff_select_kb(tariffs: list, key_id: int, order_id: str = None, is_
             price_display = f"{price_rub} ₽"
             prefix = "renew_pay_crystalpay"
             emoji = '💎'
+        elif is_lava:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 10:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_lava"
+            emoji = '🌋'
+        elif is_freekassa:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 10:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_freekassa"
+            emoji = '💸'
+        elif is_rukassa:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 10:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_rukassa"
+            emoji = '🇷🇺'
+        elif is_payok:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 10:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_payok"
+            emoji = '⚡'
+        elif is_nowpayments:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 10:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_nowpayments"
+            emoji = '🪙'
+        elif is_robokassa:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 10:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_robokassa"
+            emoji = '🔴'
+        elif is_yoomoney:
+            price_rub = tariff.get('price_rub')
+            if price_rub is None or price_rub < 2:
+                continue
+            price_display = f"{price_rub} ₽"
+            prefix = "renew_pay_yoomoney_tariff"
+            emoji = '🟣'
         elif is_demo:
             price_rub = tariff.get('price_rub')
             if price_rub is None or price_rub <= 1:

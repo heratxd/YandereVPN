@@ -34,7 +34,7 @@ def _add_column(conn: sqlite3.Connection, table: str, column_def: str) -> None:
 INITIAL_VERSION = 21
 
 # Текущая версия схемы БД (инкрементируется при добавлении новых миграций)
-LATEST_VERSION = 37
+LATEST_VERSION = 41
 
 
 def _my_keys_item_template() -> str:
@@ -94,16 +94,22 @@ def _renew_payment_page_buttons() -> str:
         {"id": "btn_renew_pay_cryptobot", "label": "🤖 CryptoBot",                "color": "secondary",   "row": 1, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
         {"id": "btn_renew_pay_xrocket",   "label": "🚀 xRocket",                  "color": "secondary",   "row": 2, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
         {"id": "btn_renew_pay_crystalpay", "label": "💎 CrystalPay",              "color": "secondary",   "row": 3, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_stars",   "label": "⭐ Оплатить звёздами",          "color": "secondary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_cards",   "label": "💳 TG payments",                "color": "secondary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_qr",      "label": "📱 ЮКасса (QR/СБП)",            "color": "secondary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_wata",    "label": "🌊 WATA (Карта/СБП)",           "color": "secondary",   "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_platega", "label": "💸 Platega (СБП)",              "color": "secondary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_cardlink", "label": "🔗 Cardlink (Карта/СБП)",      "color": "secondary",   "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_demo",    "label": "🏦 Демо оплата (РФ карта)",     "color": "secondary",   "row": 10, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_pay_balance", "label": "💎 Использовать баланс",        "color": "secondary",   "row": 11, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_renew_back",        "label": "⬅️ Назад",                     "color": "secondary", "row": 12, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-        {"id": "btn_back_main",         "label": "🈴 На главную",                "color": "secondary", "row": 12, "col": 1, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
+        {"id": "btn_renew_pay_lava",      "label": "🌋 Lava",                    "color": "secondary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_freekassa", "label": "💸 Freekassa",                "color": "secondary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_rukassa",   "label": "🇷🇺 RuKassa",                  "color": "secondary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_payok",     "label": "⚡ Payok",                    "color": "secondary",   "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_nowpayments", "label": "🪙 NowPayments",            "color": "secondary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_robokassa", "label": "🔴 Robokassa",                "color": "secondary",   "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_stars",   "label": "⭐ Оплатить звёздами",          "color": "secondary",   "row": 10, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_cards",   "label": "💳 TG payments",                "color": "secondary",   "row": 11, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_qr",      "label": "📱 ЮКасса (QR/СБП)",            "color": "secondary",   "row": 12, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_wata",    "label": "🌊 WATA (Карта/СБП)",           "color": "secondary",   "row": 13, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_platega", "label": "💸 Platega (СБП)",              "color": "secondary",   "row": 14, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_cardlink", "label": "🔗 Cardlink (Карта/СБП)",      "color": "secondary",   "row": 15, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_demo",    "label": "🏦 Демо оплата (РФ карта)",     "color": "secondary",   "row": 16, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_pay_balance", "label": "💎 Использовать баланс",        "color": "secondary",   "row": 17, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_renew_back",        "label": "⬅️ Назад",                     "color": "secondary", "row": 18, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+        {"id": "btn_back_main",         "label": "🈴 На главную",                "color": "secondary", "row": 18, "col": 1, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
     ], ensure_ascii=False)
 
 
@@ -230,6 +236,15 @@ def _new_key_no_servers_page_text() -> str:
     )
 
 
+def _new_key_type_select_page_text() -> str:
+    """Дефолт выбора формата подключения (подписка vs один конфиг)."""
+    return (
+        "⚡ <b>Выберите формат подключения</b>\n\n"
+        "🔗 <b>Подписка (рекомендуется)</b> — все протоколы в одной ссылке. Самый удобный вариант: если один протокол заблокируют, вы продолжите работать через другие без перенастройки!\n\n"
+        "🔑 <b>Один конфиг</b> — прямое подключение по конкретному протоколу (VLESS/Reality, VMess и др.) с возможностью выбора."
+    )
+
+
 def _key_runtime_page_defaults() -> dict:
     """Дефолты страниц ключей, редактируемых только через /yaa."""
     return {
@@ -243,6 +258,7 @@ def _key_runtime_page_defaults() -> dict:
         'new_key_server_select': (_new_key_server_select_page_text(), _home_only_page_buttons()),
         'new_key_inbound_select': (_new_key_inbound_select_page_text(), _empty_page_buttons()),
         'new_key_no_servers': (_new_key_no_servers_page_text(), _home_only_page_buttons()),
+        'new_key_type_select': (_new_key_type_select_page_text(), _empty_page_buttons()),
     }
 
 
@@ -645,13 +661,19 @@ def migration_initial(conn: sqlite3.Connection) -> None:
                 {"id": "btn_pay_cryptobot", "label": "🤖 Оплатить CryptoBot",    "color": "primary",   "row": 1, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
                 {"id": "btn_pay_xrocket",   "label": "🚀 Оплатить xRocket",      "color": "primary",   "row": 2, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
                 {"id": "btn_pay_crystalpay", "label": "💎 Оплатить CrystalPay",  "color": "primary",   "row": 3, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_stars",   "label": "⭐ Оплатить звёздами",      "color": "primary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_cards",   "label": "💳 Оплатить картой",        "color": "primary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_qr",      "label": "📱 QR-оплата (Карта/СБП)",  "color": "primary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_wata",    "label": "🌊 Оплата WATA (Карта/СБП)", "color": "primary",  "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_demo",    "label": "🏦 Демо оплата (РФ карта)", "color": "primary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_pay_balance", "label": "💎 Использовать баланс",    "color": "primary",   "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
-                {"id": "btn_back_main",   "label": "🈴 На главную",             "color": "secondary", "row": 10, "col": 0, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
+                {"id": "btn_pay_lava",      "label": "🌋 Оплатить Lava",         "color": "primary",   "row": 4, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_freekassa", "label": "💸 Оплатить Freekassa",    "color": "primary",   "row": 5, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_rukassa",   "label": "🇷🇺 Оплатить RuKassa",      "color": "primary",   "row": 6, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_payok",     "label": "⚡ Оплатить Payok",        "color": "primary",   "row": 7, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_nowpayments", "label": "🪙 Оплатить NowPayments", "color": "primary",   "row": 8, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_robokassa", "label": "🔴 Оплатить Robokassa",    "color": "primary",   "row": 9, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_stars",   "label": "⭐ Оплатить звёздами",      "color": "primary",   "row": 10, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_cards",   "label": "💳 Оплатить картой",        "color": "primary",   "row": 11, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_qr",      "label": "📱 QR-оплата (Карта/СБП)",  "color": "primary",   "row": 12, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_wata",    "label": "🌊 Оплата WATA (Карта/СБП)", "color": "primary",  "row": 13, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_demo",    "label": "🏦 Демо оплата (РФ карта)", "color": "primary",   "row": 14, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_pay_balance", "label": "💎 Использовать баланс",    "color": "primary",   "row": 15, "col": 0, "is_hidden": False, "action_type": "system", "action_value": None},
+                {"id": "btn_back_main",   "label": "🈴 На главную",             "color": "secondary", "row": 16, "col": 0, "is_hidden": False, "action_type": "internal", "action_value": "cmd_back_main"},
             ], ensure_ascii=False),
         },
         'renew_payment': {
@@ -1346,6 +1368,270 @@ def migration_37(conn):
             logger.info("Кнопки продления CryptoBot, xRocket, CrystalPay добавлены в renew_payment")
 
 
+def migration_38(conn):
+    """
+    Миграция v38: добавление страницы выбора формата подключения new_key_type_select.
+    """
+    text_default = _new_key_type_select_page_text()
+    buttons_default = _empty_page_buttons()
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO pages (page_key, text_default, buttons_default)
+        VALUES ('new_key_type_select', ?, ?)
+        """,
+        (text_default, buttons_default),
+    )
+    conn.execute(
+        """
+        UPDATE pages
+        SET text_default = ?,
+            buttons_default = ?
+        WHERE page_key = 'new_key_type_select'
+        """,
+        (text_default, buttons_default),
+    )
+    logger.info("Миграция v38 применена: добавлена страница new_key_type_select")
+
+
+def migration_39(conn):
+    """
+    Миграция v39: добавление колонок invoice_id для 6 новых платёжных систем
+    (Lava, Freekassa, Rukassa, Payok, NowPayments, Robokassa).
+    """
+    new_columns = [
+        "lava_invoice_id TEXT",
+        "freekassa_invoice_id TEXT",
+        "rukassa_invoice_id TEXT",
+        "payok_invoice_id TEXT",
+        "nowpayments_invoice_id TEXT",
+        "robokassa_invoice_id TEXT",
+    ]
+    for col_def in new_columns:
+        _add_column(conn, "payments", col_def)
+    logger.info("Миграция v39 применена: добавлены колонки для Lava/Freekassa/Rukassa/Payok/NowPayments/Robokassa")
+
+
+def migration_40(conn):
+    """
+    Миграция v40: добавление настроек по умолчанию для 6 новых платёжных систем
+    и обновление кнопок на страницах prepayment и renew_payment.
+    """
+    # 1. Настройки по умолчанию
+    settings_to_add = [
+        ('lava_enabled', '0'),
+        ('lava_shop_id', ''),
+        ('lava_api_key', ''),
+        ('freekassa_enabled', '0'),
+        ('freekassa_shop_id', ''),
+        ('freekassa_api_key', ''),
+        ('freekassa_secret_1', ''),
+        ('freekassa_secret_2', ''),
+        ('rukassa_enabled', '0'),
+        ('rukassa_shop_id', ''),
+        ('rukassa_token', ''),
+        ('payok_enabled', '0'),
+        ('payok_shop_id', ''),
+        ('payok_api_key', ''),
+        ('payok_secret_key', ''),
+        ('payok_api_id', ''),
+        ('nowpayments_enabled', '0'),
+        ('nowpayments_api_key', ''),
+        ('nowpayments_ipn_secret', ''),
+        ('robokassa_enabled', '0'),
+        ('robokassa_login', ''),
+        ('robokassa_password_1', ''),
+        ('robokassa_password_2', ''),
+    ]
+    for key, value in settings_to_add:
+        conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
+
+    # 2. Обновляем prepayment buttons
+    cursor = conn.execute("SELECT buttons_default FROM pages WHERE page_key = 'prepayment'")
+    row = cursor.fetchone()
+    if row:
+        try:
+            buttons = json.loads(row['buttons_default'])
+        except Exception:
+            buttons = []
+        
+        existing_ids = {b.get('id') for b in buttons if isinstance(b, dict)}
+        new_buttons = [
+            {"id": "btn_pay_lava", "label": "🌋 Оплатить Lava", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_freekassa", "label": "💸 Оплатить Freekassa", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_rukassa", "label": "🇷🇺 Оплатить RuKassa", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_payok", "label": "⚡ Оплатить Payok", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_nowpayments", "label": "🪙 Оплатить NowPayments", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_pay_robokassa", "label": "🔴 Оплатить Robokassa", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None},
+        ]
+        
+        buttons_to_add = [b for b in new_buttons if b['id'] not in existing_ids]
+        if buttons_to_add:
+            back_btn = None
+            other_buttons = []
+            for b in buttons:
+                if isinstance(b, dict):
+                    if b.get('id') == 'btn_back_main':
+                        back_btn = b
+                    else:
+                        other_buttons.append(b)
+            
+            max_row = max((b.get('row', 0) for b in other_buttons), default=-1)
+            current_row = max_row + 1
+            for b in buttons_to_add:
+                b['row'] = current_row
+                b['col'] = 0
+                other_buttons.append(b)
+                current_row += 1
+            
+            if back_btn:
+                back_btn['row'] = current_row
+                other_buttons.append(back_btn)
+                
+            conn.execute(
+                "UPDATE pages SET buttons_default = ? WHERE page_key = 'prepayment'",
+                (json.dumps(other_buttons, ensure_ascii=False),)
+            )
+
+    # 3. Обновляем renew_payment buttons
+    cursor = conn.execute("SELECT buttons_default FROM pages WHERE page_key = 'renew_payment'")
+    row = cursor.fetchone()
+    if row:
+        try:
+            buttons = json.loads(row['buttons_default'])
+        except Exception:
+            buttons = []
+            
+        existing_ids = {b.get('id') for b in buttons if isinstance(b, dict)}
+        new_buttons = [
+            {"id": "btn_renew_pay_lava", "label": "🌋 Lava", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_freekassa", "label": "💸 Freekassa", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_rukassa", "label": "🇷🇺 RuKassa", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_payok", "label": "⚡ Payok", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_nowpayments", "label": "🪙 NowPayments", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+            {"id": "btn_renew_pay_robokassa", "label": "🔴 Robokassa", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None},
+        ]
+        
+        buttons_to_add = [b for b in new_buttons if b['id'] not in existing_ids]
+        if buttons_to_add:
+            back_buttons = []
+            other_buttons = []
+            for b in buttons:
+                if isinstance(b, dict):
+                    if b.get('id') in ('btn_renew_back', 'btn_back_main'):
+                        back_buttons.append(b)
+                    else:
+                        other_buttons.append(b)
+                        
+            max_row = max((b.get('row', 0) for b in other_buttons), default=-1)
+            current_row = max_row + 1
+            for b in buttons_to_add:
+                b['row'] = current_row
+                b['col'] = 0
+                other_buttons.append(b)
+                current_row += 1
+                
+            for b in back_buttons:
+                b['row'] = current_row
+                other_buttons.append(b)
+                
+            conn.execute(
+                "UPDATE pages SET buttons_default = ? WHERE page_key = 'renew_payment'",
+                (json.dumps(other_buttons, ensure_ascii=False),)
+            )
+    logger.info("Миграция v40 применена: добавлены настройки и кнопки для Lava/Freekassa/Rukassa/Payok/NowPayments/Robokassa")
+
+
+def migration_41(conn):
+    """
+    Миграция v41: добавление настроек по умолчанию для ЮMoney и обновление кнопок на страницах prepayment и renew_payment.
+    """
+    # 1. Добавление колонки yoomoney_payment_id в payments
+    safe_add_column(conn, "payments", "yoomoney_payment_id TEXT")
+    
+    # 2. Настройки по умолчанию
+    settings_to_add = [
+        ('yoomoney_enabled', '0'),
+        ('yoomoney_wallet', ''),
+        ('yoomoney_secret', ''),
+    ]
+    for key, value in settings_to_add:
+        conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
+
+    # 3. Обновляем prepayment buttons
+    cursor = conn.execute("SELECT buttons_default FROM pages WHERE page_key = 'prepayment'")
+    row = cursor.fetchone()
+    if row:
+        try:
+            buttons = json.loads(row['buttons_default'])
+        except Exception:
+            buttons = []
+            
+        existing_ids = {b.get('id') for b in buttons if isinstance(b, dict)}
+        if "btn_pay_yoomoney" not in existing_ids:
+            back_buttons = []
+            other_buttons = []
+            for b in buttons:
+                if isinstance(b, dict):
+                    if b.get('id') in ('btn_back_tariff', 'btn_back_main'):
+                        back_buttons.append(b)
+                    else:
+                        other_buttons.append(b)
+                        
+            max_row = max((b.get('row', 0) for b in other_buttons), default=-1)
+            new_btn = {"id": "btn_pay_yoomoney", "label": "🟣 Оплатить ЮMoney", "color": "primary", "is_hidden": False, "action_type": "system", "action_value": None}
+            new_btn['row'] = max_row + 1
+            new_btn['col'] = 0
+            other_buttons.append(new_btn)
+            
+            current_row = max_row + 2
+            for b in back_buttons:
+                b['row'] = current_row
+                other_buttons.append(b)
+                
+            conn.execute(
+                "UPDATE pages SET buttons_default = ? WHERE page_key = 'prepayment'",
+                (json.dumps(other_buttons, ensure_ascii=False),)
+            )
+
+    # 4. Обновляем renew_payment buttons
+    cursor = conn.execute("SELECT buttons_default FROM pages WHERE page_key = 'renew_payment'")
+    row = cursor.fetchone()
+    if row:
+        try:
+            buttons = json.loads(row['buttons_default'])
+        except Exception:
+            buttons = []
+            
+        existing_ids = {b.get('id') for b in buttons if isinstance(b, dict)}
+        if "btn_renew_pay_yoomoney" not in existing_ids:
+            back_buttons = []
+            other_buttons = []
+            for b in buttons:
+                if isinstance(b, dict):
+                    if b.get('id') in ('btn_renew_back', 'btn_back_main'):
+                        back_buttons.append(b)
+                    else:
+                        other_buttons.append(b)
+                        
+            max_row = max((b.get('row', 0) for b in other_buttons), default=-1)
+            new_btn = {"id": "btn_renew_pay_yoomoney", "label": "🟣 ЮMoney", "color": "secondary", "is_hidden": False, "action_type": "system", "action_value": None}
+            new_btn['row'] = max_row + 1
+            new_btn['col'] = 0
+            other_buttons.append(new_btn)
+            
+            current_row = max_row + 2
+            for b in back_buttons:
+                b['row'] = current_row
+                other_buttons.append(b)
+                
+            conn.execute(
+                "UPDATE pages SET buttons_default = ? WHERE page_key = 'renew_payment'",
+                (json.dumps(other_buttons, ensure_ascii=False),)
+            )
+            
+    logger.info("Миграция v41 применена: добавлены настройки и кнопки для ЮMoney")
+
+
 MIGRATIONS = {
     22: migration_22,
     23: migration_23,
@@ -1363,6 +1649,10 @@ MIGRATIONS = {
     35: migration_35,
     36: migration_36,
     37: migration_37,
+    38: migration_38,
+    39: migration_39,
+    40: migration_40,
+    41: migration_41,
 }
 
 

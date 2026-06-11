@@ -14,4 +14,8 @@ class ReplaceKey(StatesGroup):
 
 class NewKeyConfig(StatesGroup):
     waiting_for_server = State()
+    waiting_for_type = State()
     waiting_for_inbound = State()
+
+class ManualPaymentStates(StatesGroup):
+    waiting_for_receipt = State()

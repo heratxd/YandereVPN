@@ -331,6 +331,12 @@ async def show_renew_payment_page(callback: CallbackQuery, key: dict, key_id: in
         'btn_renew_pay_cardlink',
         'btn_renew_pay_demo',
         'btn_renew_pay_balance',
+        'btn_renew_pay_lava',
+        'btn_renew_pay_freekassa',
+        'btn_renew_pay_rukassa',
+        'btn_renew_pay_payok',
+        'btn_renew_pay_nowpayments',
+        'btn_renew_pay_robokassa',
     )
     has_payment_method = any(
         SYSTEM_BUTTONS[button_id](context) is not None
@@ -419,14 +425,16 @@ async def key_replace_server_handler(callback: CallbackQuery, state: FSMContext)
         return
     await state.update_data(replace_server_id=server_id)
 
-    # Subscription mode: пропускаем выбор inbound — сразу подтверждение
-    if is_subscription_mode():
-        data = await state.get_data()
-        key_id = data.get('replace_key_id')
-        key = get_key_details_for_user(key_id, callback.from_user.id)
-        if not key:
-            await callback.answer('❌ Ключ не найден', show_alert=True)
-            return
+    # Check if the current key is a subscription key
+    data = await state.get_data()
+    key_id = data.get('replace_key_id')
+    key = get_key_details_for_user(key_id, callback.from_user.id)
+    if not key:
+        await callback.answer('❌ Ключ не найден', show_alert=True)
+        return
+
+    is_sub = bool(key.get('sub_id'))
+    if is_sub:
         # Минимальная проба сервера (получим inbounds позже при выполнении)
         try:
             client = await get_client(server_id)
@@ -460,8 +468,6 @@ async def key_replace_server_handler(callback: CallbackQuery, state: FSMContext)
         if not inbounds:
             await callback.answer('❌ На сервере нет доступных протоколов', show_alert=True)
             return
-        data = await state.get_data()
-        key_id = data.get('replace_key_id')
         await state.set_state(ReplaceKey.users_inbound)
         await render_page(
             callback,
@@ -523,8 +529,8 @@ async def key_replace_execute(callback: CallbackQuery, state: FSMContext):
         return
     await safe_edit_or_send(callback.message, '⏳ Выполняется замена ключа...')
 
-    subscription_mode = is_subscription_mode()
-    old_had_sub = bool(current_key.get('sub_id'))
+    subscription_mode = bool(current_key.get('sub_id'))
+    old_had_sub = subscription_mode
     is_same_server = current_key.get('server_id') == new_server_id
 
     try:

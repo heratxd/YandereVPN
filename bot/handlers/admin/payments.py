@@ -29,6 +29,17 @@ from database.requests import (
     is_crystalpay_enabled,
     is_cryptobot_sandbox,
     is_xrocket_sandbox,
+    is_lava_enabled,
+    is_freekassa_enabled,
+    is_rukassa_enabled,
+    is_payok_enabled,
+    is_nowpayments_enabled,
+    is_robokassa_enabled,
+    is_yoomoney_enabled,
+    is_domain_enabled,
+    get_domain_name,
+    get_bot_connection_mode,
+    get_ssl_mode,
 )
 from bot.states.admin_states import (
     AdminStates,
@@ -39,6 +50,7 @@ from bot.states.admin_states import (
 from bot.utils.admin import is_admin
 from bot.keyboards.admin import (
     payments_menu_kb,
+    domain_settings_kb,
     crypto_setup_kb,
     crypto_setup_confirm_kb,
     edit_crypto_kb,
@@ -50,6 +62,13 @@ from bot.keyboards.admin import (
     cryptobot_management_kb,
     xrocket_management_kb,
     crystalpay_management_kb,
+    lava_management_kb,
+    freekassa_management_kb,
+    rukassa_management_kb,
+    payok_management_kb,
+    nowpayments_management_kb,
+    robokassa_management_kb,
+    yoomoney_management_kb,
     back_and_home_kb
 )
 from bot.utils.text import escape_html, safe_edit_or_send
@@ -118,6 +137,18 @@ async def show_payments_menu(callback: CallbackQuery, state: FSMContext):
     cryptobot = is_cryptobot_enabled()
     xrocket = is_xrocket_enabled()
     crystalpay = is_crystalpay_enabled()
+    lava = is_lava_enabled()
+    freekassa = is_freekassa_enabled()
+    rukassa = is_rukassa_enabled()
+    payok = is_payok_enabled()
+    nowpayments = is_nowpayments_enabled()
+    robokassa = is_robokassa_enabled()
+    yoomoney = is_yoomoney_enabled()
+    
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    conn_mode = get_bot_connection_mode()
+    ssl_mode = get_ssl_mode()
 
     text = (
         "💳 <b>Настройки оплаты</b>\n\n"
@@ -179,10 +210,53 @@ async def show_payments_menu(callback: CallbackQuery, state: FSMContext):
     else:
         text += "⚪ <b>CrystalPay (РФ/Крипта)</b>\n"
 
+    if lava:
+        text += "🟢 <b>Lava</b>\n"
+    else:
+        text += "⚪ <b>Lava</b>\n"
+
+    if freekassa:
+        text += "🟢 <b>Freekassa</b>\n"
+    else:
+        text += "⚪ <b>Freekassa</b>\n"
+
+    if rukassa:
+        text += "🟢 <b>RuKassa</b>\n"
+    else:
+        text += "⚪ <b>RuKassa</b>\n"
+
+    if payok:
+        text += "🟢 <b>Payok</b>\n"
+    else:
+        text += "⚪ <b>Payok</b>\n"
+
+    if nowpayments:
+        text += "🟢 <b>NowPayments</b>\n"
+    else:
+        text += "⚪ <b>NowPayments</b>\n"
+
+    if robokassa:
+        text += "🟢 <b>Robokassa</b>\n"
+    else:
+        text += "⚪ <b>Robokassa</b>\n"
+
+    if yoomoney:
+        text += "🟢 <b>ЮMoney (Кошелек)</b>\n"
+    else:
+        text += "⚪ <b>ЮMoney (Кошелек)</b>\n"
+
     if demo:
         text += "🟢 <b>Демо оплата (РФ)</b>\n"
     else:
         text += "⚪ <b>Демо оплата (РФ)</b>\n"
+        
+    text += f"\n🌐 <b>Домен и подключение:</b>\n"
+    if domain_enabled and domain_name:
+        text += f"🟢 Использование домена: <code>{domain_name}</code>\n"
+    else:
+        text += "🔴 Использование домена: Выключено\n"
+    text += f"🔌 Режим подключения: <code>{conn_mode.upper()}</code>\n"
+    text += f"🔒 Режим SSL: <code>{ssl_mode.upper()}</code>\n"
 
     monthly_reset = get_setting('monthly_traffic_reset_enabled', '0') == '1'
 
@@ -190,7 +264,10 @@ async def show_payments_menu(callback: CallbackQuery, state: FSMContext):
         text,
         reply_markup=payments_menu_kb(
             stars, crypto, cards, qr, monthly_reset, demo, wata, platega, cardlink,
-            cryptobot_enabled=cryptobot, xrocket_enabled=xrocket, crystalpay_enabled=crystalpay
+            cryptobot_enabled=cryptobot, xrocket_enabled=xrocket, crystalpay_enabled=crystalpay,
+            lava_enabled=lava, freekassa_enabled=freekassa, rukassa_enabled=rukassa,
+            payok_enabled=payok, nowpayments_enabled=nowpayments, robokassa_enabled=robokassa,
+            yoomoney_enabled=yoomoney
         )
     )
     await callback.answer()
@@ -1758,18 +1835,29 @@ async def show_cryptobot_management_menu(callback: CallbackQuery, state: FSMCont
     is_enabled = is_cryptobot_enabled()
     is_sandbox = is_cryptobot_sandbox()
     token = get_setting('cryptobot_api_token', '') or ''
+    manual_addr = get_setting('cryptobot_manual_address', '') or '—'
     masked_token = f"{token[:6]}...{token[-4:]}" if len(token) > 10 else "—"
 
     text = (
         "🤖 <b>Управление оплатой через CryptoBot (USDT)</b>\n\n"
         f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
         f"Режим: {'🧪 Sandbox (Testnet)' if is_sandbox else '🟢 Production (Mainnet)'}\n"
-        f"API-токен: <code>{masked_token}</code>\n\n"
+        f"API-токен: <code>{masked_token}</code>\n"
+        f"Ручные реквизиты: <code>{manual_addr}</code>\n\n"
         "Инструкция по настройке:\n"
         "1. Перейдите в @CryptoBot (или @CryptoTestnetBot для Sandbox).\n"
         "2. Откройте Crypto Pay -> My Apps и создайте новое приложение.\n"
-        "3. Скопируйте полученный API-токен и введите его здесь."
+        "3. Скопируйте полученный API-токен и введите его здесь.\n"
+        "<b>ИЛИ</b> укажите ручные реквизиты (никнейм/кошелёк) для оплаты переводом в ручном режиме."
     )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/cryptobot"
+        text += f"\n\n🔗 <b>Адрес Webhook для настроек в CryptoBot:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
 
     await safe_edit_or_send(
         callback.message,
@@ -1789,14 +1877,78 @@ async def cryptobot_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
     current = is_cryptobot_enabled()
     if not current:
         token = get_setting('cryptobot_api_token', '')
-        if not token:
-            await callback.answer("⚠️ Сначала настройте API-токен", show_alert=True)
+        manual = get_setting('cryptobot_manual_address', '')
+        if not token and not manual:
+            await callback.answer("⚠️ Сначала настройте API-токен или ручные реквизиты", show_alert=True)
             return
 
     new_value = '0' if current else '1'
     set_setting('cryptobot_enabled', new_value)
     await callback.answer("Статус CryptoBot изменён")
     await show_cryptobot_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_cryptobot_mgmt_edit_manual")
+async def cryptobot_edit_manual(callback: CallbackQuery, state: FSMContext):
+    """Запрос ручных реквизитов CryptoBot."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.cryptobot_setup_manual_address)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "📝 <b>Введите реквизиты для ручной оплаты через CryptoBot</b>\n\n"
+        "Укажите ваш юзернейм (например, <code>@my_username</code>) или адрес кошелька USDT, "
+        "куда пользователи должны отправлять средства.\n\n"
+        "Для сброса настроек отправьте слово: <code>удалить</code>",
+        reply_markup=back_and_home_kb("admin_payments_cryptobot"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.cryptobot_setup_manual_address)
+async def cryptobot_setup_manual_handler(message: Message, state: FSMContext):
+    """Обработка ввода ручных реквизитов CryptoBot."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    if val.lower() == 'удалить':
+        set_setting('cryptobot_manual_address', '')
+    else:
+        set_setting('cryptobot_manual_address', val)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_cryptobot_management_menu(fake, state)
 
 
 @router.callback_query(F.data == "admin_cryptobot_mgmt_toggle_sandbox")
@@ -1893,18 +2045,29 @@ async def show_xrocket_management_menu(callback: CallbackQuery, state: FSMContex
     is_enabled = is_xrocket_enabled()
     is_sandbox = is_xrocket_sandbox()
     token = get_setting('xrocket_api_key', '') or ''
+    manual_addr = get_setting('xrocket_manual_address', '') or '—'
     masked_token = f"{token[:6]}...{token[-4:]}" if len(token) > 10 else "—"
 
     text = (
         "🚀 <b>Управление оплатой через xRocket (USDT)</b>\n\n"
         f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
         f"Режим: {'🧪 Sandbox (Demo)' if is_sandbox else '🟢 Production (Mainnet)'}\n"
-        f"API-ключ: <code>{masked_token}</code>\n\n"
+        f"API-ключ: <code>{masked_token}</code>\n"
+        f"Ручные реквизиты: <code>{manual_addr}</code>\n\n"
         "Инструкция по настройке:\n"
         "1. Перейдите в @RocketBot (или @RocketBetaBot для Sandbox).\n"
         "2. Откройте Rocket Pay -> Web API -> Create App.\n"
-        "3. Скопируйте API Key и отправьте его боту."
+        "3. Скопируйте API Key и отправьте его боту.\n"
+        "<b>ИЛИ</b> укажите ручные реквизиты (никнейм/кошелёк) для оплаты переводом в ручном режиме."
     )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/xrocket"
+        text += f"\n\n🔗 <b>Адрес Webhook для настроек в xRocket:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
 
     await safe_edit_or_send(
         callback.message,
@@ -1924,14 +2087,78 @@ async def xrocket_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
     current = is_xrocket_enabled()
     if not current:
         token = get_setting('xrocket_api_key', '')
-        if not token:
-            await callback.answer("⚠️ Сначала настройте API-ключ", show_alert=True)
+        manual = get_setting('xrocket_manual_address', '')
+        if not token and not manual:
+            await callback.answer("⚠️ Сначала настройте API-ключ или ручные реквизиты", show_alert=True)
             return
 
     new_value = '0' if current else '1'
     set_setting('xrocket_enabled', new_value)
     await callback.answer("Статус xRocket изменён")
     await show_xrocket_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_xrocket_mgmt_edit_manual")
+async def xrocket_edit_manual(callback: CallbackQuery, state: FSMContext):
+    """Запрос ручных реквизитов xRocket."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.xrocket_setup_manual_address)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "📝 <b>Введите реквизиты для ручной оплаты через xRocket</b>\n\n"
+        "Укажите ваш юзернейм (например, <code>@my_username</code>) или адрес кошелька USDT, "
+        "куда пользователи должны отправлять средства.\n\n"
+        "Для сброса настроек отправьте слово: <code>удалить</code>",
+        reply_markup=back_and_home_kb("admin_payments_xrocket"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.xrocket_setup_manual_address)
+async def xrocket_setup_manual_handler(message: Message, state: FSMContext):
+    """Обработка ввода ручных реквизитов xRocket."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    if val.lower() == 'удалить':
+        set_setting('xrocket_manual_address', '')
+    else:
+        set_setting('xrocket_manual_address', val)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_xrocket_management_menu(fake, state)
 
 
 @router.callback_query(F.data == "admin_xrocket_mgmt_toggle_sandbox")
@@ -2040,6 +2267,14 @@ async def show_crystalpay_management_menu(callback: CallbackQuery, state: FSMCon
         "2. Скопируйте имя кассы (Login) и Секретный ключ (Secret API / Секретный ключ 1).\n"
         "3. Введите эти значения в соответствующих полях настройки."
     )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/crystalpay"
+        text += f"\n\n🔗 <b>Адрес Webhook для настроек в CrystalPay:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
 
     await safe_edit_or_send(
         callback.message,
@@ -2196,5 +2431,1696 @@ async def crystalpay_setup_secret_handler(message: Message, state: FSMContext):
 
     fake = FakeCallback(menu_message, message.from_user)
     await show_crystalpay_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА LAVA
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_lava")
+async def show_lava_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления Lava."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_lava_enabled()
+    shop_id = get_setting('lava_shop_id', '') or ''
+    api_key = get_setting('lava_api_key', '') or ''
+    masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "—"
+
+    text = (
+        "🌋 <b>Управление оплатой через Lava</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Shop ID: <code>{shop_id or '—'}</code>\n"
+        f"API-токен: <code>{masked_key}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите в личный кабинет Lava и создайте проект.\n"
+        "2. Скопируйте Shop ID и API-токен.\n"
+        "3. Введите эти значения в соответствующих полях настройки."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/lava"
+        text += f"\n\n🔗 <b>Адрес Webhook для настроек в Lava:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=lava_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_lava_mgmt_toggle")
+async def lava_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение Lava-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_lava_enabled()
+    if not current:
+        shop_id = get_setting('lava_shop_id', '')
+        api_key = get_setting('lava_api_key', '')
+        if not shop_id or not api_key:
+            await callback.answer("⚠️ Сначала настройте Shop ID и API-токен кассы", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('lava_enabled', new_value)
+    await callback.answer("Статус Lava изменён")
+    await show_lava_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_lava_mgmt_edit_shop_id")
+async def lava_edit_shop_id(callback: CallbackQuery, state: FSMContext):
+    """Запрос Shop ID кассы Lava."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.lava_setup_shop_id)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите Shop ID Lava</b>\n\n"
+        "Скопируйте Shop ID из настроек Lava.\n\n"
+        "<i>Значение будет сохранено в базе данных.</i>",
+        reply_markup=back_and_home_kb("admin_payments_lava"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.lava_setup_shop_id)
+async def lava_setup_shop_id_handler(message: Message, state: FSMContext):
+    """Обработка ввода Shop ID Lava."""
+    from bot.utils.text import get_message_text_for_storage
+
+    shop_id = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(shop_id) < 2:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение. Попробуйте ещё раз.")
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    set_setting('lava_shop_id', shop_id)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_lava_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_lava_mgmt_edit_api_key")
+async def lava_edit_api_key(callback: CallbackQuery, state: FSMContext):
+    """Запрос API-токена Lava."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.lava_setup_api_key)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите API-токен Lava</b>\n\n"
+        "Скопируйте API-токен из настроек Lava.\n\n"
+        "<i>Значение будет частично скрыто после сохранения.</i>",
+        reply_markup=back_and_home_kb("admin_payments_lava"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.lava_setup_api_key)
+async def lava_setup_api_key_handler(message: Message, state: FSMContext):
+    """Обработка ввода API-токена Lava."""
+    from bot.utils.text import get_message_text_for_storage
+
+    api_key = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(api_key) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткий ключ. Попробуйте ещё раз.")
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    set_setting('lava_api_key', api_key)
+
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_lava_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА FREEKASSA
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_freekassa")
+async def show_freekassa_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления Freekassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_freekassa_enabled()
+    shop_id = get_setting('freekassa_shop_id', '') or ''
+    api_key = get_setting('freekassa_api_key', '') or ''
+    secret_1 = get_setting('freekassa_secret_1', '') or ''
+    secret_2 = get_setting('freekassa_secret_2', '') or ''
+    
+    masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "—"
+    masked_sec1 = f"{secret_1[:2]}...{secret_1[-2:]}" if len(secret_1) > 4 else "—"
+    masked_sec2 = f"{secret_2[:2]}...{secret_2[-2:]}" if len(secret_2) > 4 else "—"
+
+    text = (
+        "💸 <b>Управление оплатой через Freekassa</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"ID магазина (Shop ID): <code>{shop_id or '—'}</code>\n"
+        f"API-ключ: <code>{masked_key}</code>\n"
+        f"Секретное слово 1: <code>{masked_sec1}</code>\n"
+        f"Секретное слово 2: <code>{masked_sec2}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Зарегистрируйтесь на freekassa.ru и добавьте магазин.\n"
+        "2. Скопируйте ID магазина, API-ключ, Секретное слово 1 и Секретное слово 2.\n"
+        "3. Введите эти значения в соответствующих полях настройки."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/freekassa"
+        text += f"\n\n🔗 <b>Адрес Webhook (Result URL) для настроек в Freekassa:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=freekassa_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_freekassa_mgmt_toggle")
+async def freekassa_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение Freekassa-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_freekassa_enabled()
+    if not current:
+        shop_id = get_setting('freekassa_shop_id', '')
+        api_key = get_setting('freekassa_api_key', '')
+        sec1 = get_setting('freekassa_secret_1', '')
+        sec2 = get_setting('freekassa_secret_2', '')
+        if not shop_id or not api_key or not sec1 or not sec2:
+            await callback.answer("⚠️ Сначала заполните все настройки Freekassa!", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('freekassa_enabled', new_value)
+    await callback.answer("Статус Freekassa изменён")
+    await show_freekassa_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_freekassa_mgmt_edit_shop_id")
+async def freekassa_edit_shop_id(callback: CallbackQuery, state: FSMContext):
+    """Запрос Shop ID Freekassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.freekassa_setup_shop_id)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите Shop ID Freekassa</b>\n\n"
+        "Введите ID вашего магазина из личного кабинета Freekassa.",
+        reply_markup=back_and_home_kb("admin_payments_freekassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.freekassa_setup_shop_id)
+async def freekassa_setup_shop_id_handler(message: Message, state: FSMContext):
+    """Обработка ввода Shop ID Freekassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 1:
+        await safe_edit_or_send(message, "❌ Недопустимое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('freekassa_shop_id', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_freekassa_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_freekassa_mgmt_edit_api_key")
+async def freekassa_edit_api_key(callback: CallbackQuery, state: FSMContext):
+    """Запрос API-ключа Freekassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.freekassa_setup_api_key)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите API-ключ Freekassa</b>\n\n"
+        "Введите API-ключ вашего аккаунта Freekassa.",
+        reply_markup=back_and_home_kb("admin_payments_freekassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.freekassa_setup_api_key)
+async def freekassa_setup_api_key_handler(message: Message, state: FSMContext):
+    """Обработка ввода API-ключа Freekassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткий ключ.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('freekassa_api_key', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_freekassa_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_freekassa_mgmt_edit_secret_1")
+async def freekassa_edit_secret_1(callback: CallbackQuery, state: FSMContext):
+    """Запрос Секретного слова 1 Freekassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.freekassa_setup_secret_1)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите Секретное слово 1 Freekassa</b>\n\n"
+        "Оно используется для инициализации платежей.",
+        reply_markup=back_and_home_kb("admin_payments_freekassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.freekassa_setup_secret_1)
+async def freekassa_setup_secret_1_handler(message: Message, state: FSMContext):
+    """Обработка ввода Секретного слова 1 Freekassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 2:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('freekassa_secret_1', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_freekassa_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_freekassa_mgmt_edit_secret_2")
+async def freekassa_edit_secret_2(callback: CallbackQuery, state: FSMContext):
+    """Запрос Секретного слова 2 Freekassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.freekassa_setup_secret_2)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите Секретное слово 2 Freekassa</b>\n\n"
+        "Оно используется для проверки оповещений (Result URL) от Freekassa.",
+        reply_markup=back_and_home_kb("admin_payments_freekassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.freekassa_setup_secret_2)
+async def freekassa_setup_secret_2_handler(message: Message, state: FSMContext):
+    """Обработка ввода Секретного слова 2 Freekassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 2:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('freekassa_secret_2', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_freekassa_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА RUKASSA
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_rukassa")
+async def show_rukassa_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления Rukassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_rukassa_enabled()
+    shop_id = get_setting('rukassa_shop_id', '') or ''
+    token = get_setting('rukassa_token', '') or ''
+    masked_key = f"{token[:4]}...{token[-4:]}" if len(token) > 8 else "—"
+
+    text = (
+        "🇷🇺 <b>Управление оплатой через RuKassa</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Shop ID: <code>{shop_id or '—'}</code>\n"
+        f"Токен: <code>{masked_key}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите на сайт rukassa.is и создайте кассу.\n"
+        "2. Скопируйте ID магазина (Shop ID) и API Токен.\n"
+        "3. Укажите полученные значения здесь."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/rukassa"
+        text += f"\n\n🔗 <b>Адрес Webhook для настроек в RuKassa:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=rukassa_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_rukassa_mgmt_toggle")
+async def rukassa_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение Rukassa-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_rukassa_enabled()
+    if not current:
+        shop_id = get_setting('rukassa_shop_id', '')
+        token = get_setting('rukassa_token', '')
+        if not shop_id or not token:
+            await callback.answer("⚠️ Сначала укажите Shop ID и Токен кассы", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('rukassa_enabled', new_value)
+    await callback.answer("Статус RuKassa изменён")
+    await show_rukassa_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_rukassa_mgmt_edit_shop_id")
+async def rukassa_edit_shop_id(callback: CallbackQuery, state: FSMContext):
+    """Запрос Shop ID RuKassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.rukassa_setup_shop_id)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите Shop ID RuKassa</b>\n\n"
+        "Скопируйте Shop ID вашей кассы из личного кабинета RuKassa.",
+        reply_markup=back_and_home_kb("admin_payments_rukassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.rukassa_setup_shop_id)
+async def rukassa_setup_shop_id_handler(message: Message, state: FSMContext):
+    """Обработка ввода Shop ID RuKassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 1:
+        await safe_edit_or_send(message, "❌ Недопустимое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('rukassa_shop_id', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_rukassa_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_rukassa_mgmt_edit_token")
+async def rukassa_edit_token(callback: CallbackQuery, state: FSMContext):
+    """Запрос Токена RuKassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.rukassa_setup_token)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите Токен RuKassa</b>\n\n"
+        "Скопируйте API токен кассы из личного кабинета RuKassa.",
+        reply_markup=back_and_home_kb("admin_payments_rukassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.rukassa_setup_token)
+async def rukassa_setup_token_handler(message: Message, state: FSMContext):
+    """Обработка ввода Токена RuKassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткий токен.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('rukassa_token', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_rukassa_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА PAYOK
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_payok")
+async def show_payok_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления Payok."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_payok_enabled()
+    shop_id = get_setting('payok_shop_id', '') or ''
+    api_key = get_setting('payok_api_key', '') or ''
+    secret_key = get_setting('payok_secret_key', '') or ''
+    api_id = get_setting('payok_api_id', '') or ''
+
+    masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "—"
+    masked_sec = f"{secret_key[:4]}...{secret_key[-4:]}" if len(secret_key) > 8 else "—"
+
+    text = (
+        "⚡ <b>Управление оплатой через Payok</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Shop ID: <code>{shop_id or '—'}</code>\n"
+        f"API-ключ: <code>{masked_key}</code>\n"
+        f"Секретный ключ (IPN): <code>{masked_sec}</code>\n"
+        f"API ID: <code>{api_id or '—'}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите на payok.io и создайте проект.\n"
+        "2. Скопируйте ID магазина, API-ключ, Секретный ключ и API ID.\n"
+        "3. Введите эти значения в соответствующих полях настройки."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/payok"
+        text += f"\n\n🔗 <b>Адрес Webhook для настроек в Payok:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=payok_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_payok_mgmt_toggle")
+async def payok_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение Payok-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_payok_enabled()
+    if not current:
+        shop_id = get_setting('payok_shop_id', '')
+        api_key = get_setting('payok_api_key', '')
+        sec = get_setting('payok_secret_key', '')
+        if not shop_id or not api_key or not sec:
+            await callback.answer("⚠️ Сначала настройте Shop ID, API-ключ и Секретный ключ!", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('payok_enabled', new_value)
+    await callback.answer("Статус Payok изменён")
+    await show_payok_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_payok_mgmt_edit_shop_id")
+async def payok_edit_shop_id(callback: CallbackQuery, state: FSMContext):
+    """Запрос Shop ID Payok."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payok_setup_shop_id)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите Shop ID Payok</b>\n\n"
+        "Введите ID проекта из настроек Payok.",
+        reply_markup=back_and_home_kb("admin_payments_payok"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.payok_setup_shop_id)
+async def payok_setup_shop_id_handler(message: Message, state: FSMContext):
+    """Обработка ввода Shop ID Payok."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 1:
+        await safe_edit_or_send(message, "❌ Недопустимое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('payok_shop_id', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_payok_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_payok_mgmt_edit_api_key")
+async def payok_edit_api_key(callback: CallbackQuery, state: FSMContext):
+    """Запрос API-ключа Payok."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payok_setup_api_key)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите API-ключ Payok</b>\n\n"
+        "Скопируйте API ключ из личного кабинета Payok.",
+        reply_markup=back_and_home_kb("admin_payments_payok"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.payok_setup_api_key)
+async def payok_setup_api_key_handler(message: Message, state: FSMContext):
+    """Обработка ввода API-ключа Payok."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткий ключ.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('payok_api_key', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_payok_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_payok_mgmt_edit_secret_key")
+async def payok_edit_secret_key(callback: CallbackQuery, state: FSMContext):
+    """Запрос Секретного ключа Payok."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payok_setup_secret_key)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите Секретный ключ Payok</b>\n\n"
+        "Скопируйте Секретный ключ (для подписи вебхуков) из настроек проекта Payok.",
+        reply_markup=back_and_home_kb("admin_payments_payok"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.payok_setup_secret_key)
+async def payok_setup_secret_key_handler(message: Message, state: FSMContext):
+    """Обработка ввода Секретного ключа Payok."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткий ключ.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('payok_secret_key', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_payok_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_payok_mgmt_edit_api_id")
+async def payok_edit_api_id(callback: CallbackQuery, state: FSMContext):
+    """Запрос API ID Payok."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payok_setup_api_id)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите API ID Payok</b>\n\n"
+        "Скопируйте API ID из личного кабинета Payok.",
+        reply_markup=back_and_home_kb("admin_payments_payok"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.payok_setup_api_id)
+async def payok_setup_api_id_handler(message: Message, state: FSMContext):
+    """Обработка ввода API ID Payok."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 1:
+        await safe_edit_or_send(message, "❌ Недопустимое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('payok_api_id', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_payok_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА NOWPAYMENTS
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_nowpayments")
+async def show_nowpayments_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления NowPayments."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_nowpayments_enabled()
+    api_key = get_setting('nowpayments_api_key', '') or ''
+    ipn_secret = get_setting('nowpayments_ipn_secret', '') or ''
+
+    masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "—"
+    masked_sec = f"{ipn_secret[:4]}...{ipn_secret[-4:]}" if len(ipn_secret) > 8 else "—"
+
+    text = (
+        "🪙 <b>Управление оплатой через NowPayments (Крипта)</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"API-ключ: <code>{masked_key}</code>\n"
+        f"IPN Secret: <code>{masked_sec}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите на nowpayments.io и создайте аккаунт.\n"
+        "2. В настройках кабинета сгенерируйте API Key и IPN Secret.\n"
+        "3. Введите полученные значения в полях ниже."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/nowpayments"
+        text += f"\n\n🔗 <b>Адрес Webhook (IPN URL) для настроек в NowPayments:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=nowpayments_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_nowpayments_mgmt_toggle")
+async def nowpayments_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение NowPayments-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_nowpayments_enabled()
+    if not current:
+        api_key = get_setting('nowpayments_api_key', '')
+        if not api_key:
+            await callback.answer("⚠️ Сначала настройте API-ключ NowPayments", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('nowpayments_enabled', new_value)
+    await callback.answer("Статус NowPayments изменён")
+    await show_nowpayments_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_nowpayments_mgmt_edit_api_key")
+async def nowpayments_edit_api_key(callback: CallbackQuery, state: FSMContext):
+    """Запрос API-ключа NowPayments."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.nowpayments_setup_api_key)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔑 <b>Введите API-ключ NowPayments</b>\n\n"
+        "Скопируйте API Key из вашего кабинета NowPayments.",
+        reply_markup=back_and_home_kb("admin_payments_nowpayments"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.nowpayments_setup_api_key)
+async def nowpayments_setup_api_key_handler(message: Message, state: FSMContext):
+    """Обработка ввода API-ключа NowPayments."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткий ключ.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('nowpayments_api_key', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_nowpayments_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_nowpayments_mgmt_edit_ipn_secret")
+async def nowpayments_edit_ipn_secret(callback: CallbackQuery, state: FSMContext):
+    """Запрос IPN Secret NowPayments."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.nowpayments_setup_ipn_secret)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите IPN Secret NowPayments</b>\n\n"
+        "Скопируйте Instant Payment Notifications (IPN) secret key из настроек кабинета NowPayments.",
+        reply_markup=back_and_home_kb("admin_payments_nowpayments"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.nowpayments_setup_ipn_secret)
+async def nowpayments_setup_ipn_secret_handler(message: Message, state: FSMContext):
+    """Обработка ввода IPN Secret NowPayments."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('nowpayments_ipn_secret', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_nowpayments_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА ROBOKASSA
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_robokassa")
+async def show_robokassa_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления Robokassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_robokassa_enabled()
+    login = get_setting('robokassa_login', '') or ''
+    pass1 = get_setting('robokassa_password_1', '') or ''
+    pass2 = get_setting('robokassa_password_2', '') or ''
+
+    masked_p1 = f"{pass1[:2]}...{pass1[-2:]}" if len(pass1) > 4 else "—"
+    masked_p2 = f"{pass2[:2]}...{pass2[-2:]}" if len(pass2) > 4 else "—"
+
+    text = (
+        "🔴 <b>Управление оплатой через Robokassa</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Идентификатор магазина (Login): <code>{login or '—'}</code>\n"
+        f"Пароль 1: <code>{masked_p1}</code>\n"
+        f"Пароль 2: <code>{masked_p2}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите на robokassa.com и зарегистрируйте магазин.\n"
+        "2. В настройках магазина скопируйте Идентификатор, сгенерируйте Пароль 1 и Пароль 2.\n"
+        "3. Введите полученные значения здесь."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/robokassa"
+        text += f"\n\n🔗 <b>Адрес Webhook (Result URL) для настроек в Robokassa:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=robokassa_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_robokassa_mgmt_toggle")
+async def robokassa_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение Robokassa-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_robokassa_enabled()
+    if not current:
+        login = get_setting('robokassa_login', '')
+        p1 = get_setting('robokassa_password_1', '')
+        p2 = get_setting('robokassa_password_2', '')
+        if not login or not p1 or not p2:
+            await callback.answer("⚠️ Сначала настройте Login, Пароль 1 и Пароль 2!", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('robokassa_enabled', new_value)
+    await callback.answer("Статус Robokassa изменён")
+    await show_robokassa_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_robokassa_mgmt_edit_login")
+async def robokassa_edit_login(callback: CallbackQuery, state: FSMContext):
+    """Запрос Login Robokassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.robokassa_setup_login)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите Идентификатор магазина (Login) Robokassa</b>\n\n"
+        "Скопируйте Идентификатор магазина из личного кабинета Robokassa.",
+        reply_markup=back_and_home_kb("admin_payments_robokassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.robokassa_setup_login)
+async def robokassa_setup_login_handler(message: Message, state: FSMContext):
+    """Обработка ввода Login Robokassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 1:
+        await safe_edit_or_send(message, "❌ Недопустимое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('robokassa_login', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_robokassa_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_robokassa_mgmt_edit_password_1")
+async def robokassa_edit_password_1(callback: CallbackQuery, state: FSMContext):
+    """Запрос Пароля 1 Robokassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.robokassa_setup_password_1)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите Пароль 1 Robokassa</b>\n\n"
+        "Используется для подписи запросов на оплату (вводится в настройках Robokassa).",
+        reply_markup=back_and_home_kb("admin_payments_robokassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.robokassa_setup_password_1)
+async def robokassa_setup_password_1_handler(message: Message, state: FSMContext):
+    """Обработка ввода Пароля 1 Robokassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('robokassa_password_1', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_robokassa_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_robokassa_mgmt_edit_password_2")
+async def robokassa_edit_password_2(callback: CallbackQuery, state: FSMContext):
+    """Запрос Пароля 2 Robokassa."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.robokassa_setup_password_2)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите Пароль 2 Robokassa</b>\n\n"
+        "Используется для проверки входящих оповещений (Result URL) от Robokassa.",
+        reply_markup=back_and_home_kb("admin_payments_robokassa"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.robokassa_setup_password_2)
+async def robokassa_setup_password_2_handler(message: Message, state: FSMContext):
+    """Обработка ввода Пароля 2 Robokassa."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('robokassa_password_2', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_robokassa_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКА YOOMONEY
+# ============================================================================
+
+@router.callback_query(F.data == "admin_payments_yoomoney")
+async def show_yoomoney_management_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню управления YooMoney (ЮMoney)."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.payments_menu)
+
+    is_enabled = is_yoomoney_enabled()
+    wallet = get_setting('yoomoney_wallet', '') or ''
+    secret = get_setting('yoomoney_secret', '') or ''
+    masked_sec = f"{secret[:4]}...{secret[-4:]}" if len(secret) > 8 else "—"
+
+    text = (
+        "🟣 <b>Управление оплатой через ЮMoney (Кошелек)</b>\n\n"
+        f"Статус: {'🟢 Включено' if is_enabled else '⚪ Выключено'}\n"
+        f"Номер кошелька: <code>{wallet or '—'}</code>\n"
+        f"Секретный ключ (IPN): <code>{masked_sec}</code>\n\n"
+        "Инструкция по настройке:\n"
+        "1. Перейдите на yoomoney.ru и войдите в свой кошелек.\n"
+        "2. Скопируйте номер вашего кошелька.\n"
+        "3. Перейдите в настройки уведомлений ЮMoney, вставьте адрес Webhook и скопируйте секрет оповещений.\n"
+        "4. Введите полученные значения в кнопках ниже."
+    )
+
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    if domain_enabled and domain_name:
+        webhook_url = f"https://{domain_name}/webhook/yoomoney"
+        text += f"\n\n🔗 <b>Адрес Webhook (IPN) для настроек в ЮMoney:</b>\n<code>{webhook_url}</code>"
+    else:
+        text += "\n\n⚠️ <i>Для автоматического подтверждения оплат настройте домен в меню «Настройки домена и SSL».</i>"
+
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=yoomoney_management_kb(is_enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_yoomoney_mgmt_toggle")
+async def yoomoney_mgmt_toggle(callback: CallbackQuery, state: FSMContext):
+    """Включение/выключение ЮMoney-оплаты."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    current = is_yoomoney_enabled()
+    if not current:
+        wallet = get_setting('yoomoney_wallet', '')
+        secret = get_setting('yoomoney_secret', '')
+        if not wallet or not secret:
+            await callback.answer("⚠️ Сначала настройте номер кошелька и секретный ключ (IPN)!", show_alert=True)
+            return
+
+    new_value = '0' if current else '1'
+    set_setting('yoomoney_enabled', new_value)
+    await callback.answer("Статус ЮMoney изменён")
+    await show_yoomoney_management_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_yoomoney_mgmt_edit_wallet")
+async def yoomoney_edit_wallet(callback: CallbackQuery, state: FSMContext):
+    """Запрос номера кошелька ЮMoney."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.yoomoney_setup_wallet)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🆔 <b>Введите номер кошелька ЮMoney</b>\n\n"
+        "Например: <code>41001xxxxxxxxxx</code>",
+        reply_markup=back_and_home_kb("admin_payments_yoomoney"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.yoomoney_setup_wallet)
+async def yoomoney_setup_wallet_handler(message: Message, state: FSMContext):
+    """Обработка ввода кошелька ЮMoney."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 8:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('yoomoney_wallet', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_yoomoney_management_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_yoomoney_mgmt_edit_secret")
+async def yoomoney_edit_secret(callback: CallbackQuery, state: FSMContext):
+    """Запрос Секретного ключа (IPN) ЮMoney."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.yoomoney_setup_secret)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+
+    await safe_edit_or_send(
+        callback.message,
+        "🔐 <b>Введите секрет оповещений ЮMoney (IPN Secret)</b>\n\n"
+        "Скопируйте секрет из страницы настроек HTTP-уведомлений ЮMoney.",
+        reply_markup=back_and_home_kb("admin_payments_yoomoney"),
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.yoomoney_setup_secret)
+async def yoomoney_setup_secret_handler(message: Message, state: FSMContext):
+    """Обработка ввода Секретного ключа (IPN) ЮMoney."""
+    from bot.utils.text import get_message_text_for_storage
+    val = get_message_text_for_storage(message, 'plain').strip()
+
+    if len(val) < 4:
+        await safe_edit_or_send(message, "❌ Слишком короткое значение.")
+        return
+
+    try: message.delete()
+    except: pass
+
+    set_setting('yoomoney_secret', val)
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message, self.from_user, self.bot = msg, user, msg.bot
+        async def answer(self, *args, **kwargs): pass
+
+    menu_message = message
+    if last_menu_msg_id:
+        try: menu_message = await message.bot.edit_message_text(chat_id=message.chat.id, message_id=last_menu_msg_id, text="⌛")
+        except: menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_yoomoney_management_menu(fake, state)
+
+
+# ============================================================================
+# НАСТРОЙКИ ДОМЕНА И SSL
+# ============================================================================
+
+@router.callback_query(F.data == "admin_domain_settings")
+async def show_domain_settings_menu(callback: CallbackQuery, state: FSMContext):
+    """Показывает меню настроек домена и SSL."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+    
+    await state.set_state(AdminStates.payments_menu)  # возвращаемся в меню
+    
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    conn_mode = get_bot_connection_mode()
+    ssl_mode = get_ssl_mode()
+    
+    status_domain = "🟢 Включено" if domain_enabled else "🔴 Выключено"
+    status_mode = "📡 Webhook (Рекомендовано)" if conn_mode == "webhook" else "📥 Polling (Опрос)"
+    status_ssl = "🛡️ Standalone (Бот сам слушает 443 порт)" if ssl_mode == "standalone" else "🎛️ Proxy (Nginx / Cloudflare)"
+    
+    text = (
+        "🌐 <b>Настройки домена и SSL</b>\n\n"
+        "Вы можете привязать домен к боту для автоматического прохождения Let's Encrypt проверок, "
+        "генерации SSL-сертификатов и перевода бота в режим Webhook.\n\n"
+        f"▪️ <b>Использование домена:</b> {status_domain}\n"
+        f"▪️ <b>Доменное имя:</b> <code>{domain_name or 'не указано'}</code>\n"
+        f"▪️ <b>Режим подключения:</b> {status_mode}\n"
+        f"▪️ <b>Режим SSL:</b> {status_ssl}\n\n"
+        "⚠️ <i>Для режима Standalone убедитесь, что порты 80 и 443 свободны на сервере и проброшены в контейнер бота.</i>\n"
+        "⚠️ <i>При включенном домене все вебхуки платежных систем автоматически генерируются через указанный домен.</i>"
+    )
+    
+    await safe_edit_or_send(
+        callback.message,
+        text,
+        reply_markup=domain_settings_kb(domain_enabled, conn_mode, ssl_mode)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_domain_toggle")
+async def toggle_domain_setting(callback: CallbackQuery, state: FSMContext):
+    """Включает/выключает использование домена."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    current = is_domain_enabled()
+    new_val = '0' if current else '1'
+    
+    domain_name = get_domain_name()
+    if new_val == '1' and not domain_name:
+        await callback.answer("⚠️ Сначала укажите доменное имя!", show_alert=True)
+        return
+        
+    set_setting('domain_enabled', new_val)
+    status = "включено 🟢" if new_val == '1' else "выключено 🔴"
+    await callback.answer(f"Использование домена {status}", show_alert=True)
+    await show_domain_settings_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_domain_toggle_mode")
+async def toggle_domain_connection_mode(callback: CallbackQuery, state: FSMContext):
+    """Переключает режим подключения (polling / webhook)."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    current = get_bot_connection_mode()
+    new_val = 'polling' if current == 'webhook' else 'webhook'
+    
+    set_setting('bot_connection_mode', new_val)
+    await callback.answer(f"Режим изменен на {new_val.upper()} 🔌\nПерезагрузите бота для применения изменений.", show_alert=True)
+    await show_domain_settings_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_domain_toggle_ssl")
+async def toggle_domain_ssl_mode(callback: CallbackQuery, state: FSMContext):
+    """Переключает режим SSL (proxy / standalone)."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    current = get_ssl_mode()
+    new_val = 'proxy' if current == 'standalone' else 'standalone'
+    
+    set_setting('ssl_mode', new_val)
+    await callback.answer(f"SSL режим изменен на {new_val.upper()} 🔒\nПерезагрузите бота для применения изменений.", show_alert=True)
+    await show_domain_settings_menu(callback, state)
+
+
+@router.callback_query(F.data == "admin_domain_edit_name")
+async def edit_domain_name_request(callback: CallbackQuery, state: FSMContext):
+    """Запрашивает доменное имя."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    await state.set_state(AdminStates.domain_setup_name)
+    await state.update_data(last_menu_msg_id=callback.message.message_id)
+    
+    await safe_edit_or_send(
+        callback.message,
+        "📝 <b>Введите ваше доменное имя</b>\n\n"
+        "Например: <code>myvpnbot.ru</code> или <code>sub.domain.com</code>\n\n"
+        "⚠️ <i>Домен должен быть направлен A-записью (A record) на IP вашего сервера!</i>",
+        reply_markup=back_and_home_kb("admin_domain_settings")
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.domain_setup_name)
+async def domain_setup_name_handler(message: Message, state: FSMContext):
+    """Обрабатывает ввод доменного имени."""
+    from bot.utils.text import get_message_text_for_storage
+    import re
+    
+    domain = get_message_text_for_storage(message, 'plain').strip().lower()
+    
+    # Простая валидация домена
+    domain_pattern = re.compile(r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$')
+    if not domain_pattern.match(domain):
+        await message.answer("❌ Некорректный формат домена. Попробуйте еще раз или нажмите Отмена.")
+        return
+        
+    try:
+        await message.delete()
+    except Exception:
+        pass
+        
+    set_setting('domain_name', domain)
+    
+    data = await state.get_data()
+    last_menu_msg_id = data.get('last_menu_msg_id')
+    
+    class FakeCallback:
+        def __init__(self, msg, user):
+            self.message = msg
+            self.from_user = user
+            self.bot = msg.bot
+        async def answer(self, *args, **kwargs):
+            pass
+            
+    menu_message = message
+    if last_menu_msg_id:
+        try:
+            menu_message = await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_menu_msg_id,
+                text="⌛"
+            )
+        except Exception:
+            menu_message = await safe_edit_or_send(message, "⌛", force_new=True)
+            
+    fake = FakeCallback(menu_message, message.from_user)
+    await show_domain_settings_menu(fake, state)
+
+
+@router.callback_query(F.data == "admin_domain_run_certbot")
+async def run_certbot_ssl(callback: CallbackQuery, state: FSMContext):
+    """Запускает процесс генерации/проверки SSL сертификата через Certbot."""
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    domain = get_domain_name()
+    if not domain:
+        await callback.answer("⚠️ Сначала укажите доменное имя!", show_alert=True)
+        return
+        
+    await callback.answer("⏳ Запуск процесса Certbot...", show_alert=False)
+    
+    # Отправляем сообщение о начале
+    progress_msg = await callback.message.answer(
+        f"⏳ <b>Запущен процесс получения SSL-сертификата для домена:</b> <code>{domain}</code>\n"
+        f"Пожалуйста, подождите..."
+    )
+    
+    import asyncio
+    try:
+        # Выполняем certbot в автономном (standalone) режиме.
+        cmd = [
+            "certbot", "certonly", 
+            "--standalone", 
+            "-d", domain, 
+            "--non-interactive", 
+            "--agree-tos", 
+            "--register-unsafely-without-email"
+        ]
+        
+        cmd.extend(["--expand", "--keep-until-expiring"])
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        stdout_str = stdout.decode('utf-8', errors='ignore')
+        stderr_str = stderr.decode('utf-8', errors='ignore')
+        
+        if process.returncode == 0:
+            text = (
+                f"✅ <b>SSL-сертификат Let's Encrypt успешно получен/проверен!</b>\n\n"
+                f"Сертификаты сохранены по пути:\n"
+                f"<code>/etc/letsencrypt/live/{domain}/fullchain.pem</code>\n"
+                f"<code>/etc/letsencrypt/live/{domain}/privkey.pem</code>\n\n"
+                f"Бот теперь готов работать по протоколу HTTPS в режиме Standalone SSL."
+            )
+            logger.info(f"Certbot success for domain {domain}:\n{stdout_str}")
+        else:
+            text = (
+                f"❌ <b>Ошибка при получении SSL-сертификата Certbot</b>\n\n"
+                f"Код возврата: {process.returncode}\n"
+                f"Вывод ошибок:\n<pre>{escape_html(stderr_str or stdout_str)}</pre>\n\n"
+                f"💡 <i>Убедитесь, что порт 80 проброшен, свободен и домен {domain} направлен на этот IP-адрес.</i>"
+            )
+            logger.error(f"Certbot failed for domain {domain}:\nStdout: {stdout_str}\nStderr: {stderr_str}")
+            
+        await progress_msg.edit_text(text)
+    except Exception as e:
+        logger.exception("Error running certbot subprocess")
+        await progress_msg.edit_text(f"❌ Системная ошибка при запуске Certbot:\n<code>{escape_html(str(e))}</code>")
 
 

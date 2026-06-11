@@ -286,7 +286,7 @@ async def send_key_with_qr(
              return
 
         # === Subscription mode: выдаём subscription URL + QR этой ссылки ===
-        if key_data.get('sub_id') and is_subscription_mode():
+        if key_data.get('sub_id'):
             sub_url = await get_subscription_url_for_key(key_data)
             if not sub_url:
                 await _send_error(messageable,

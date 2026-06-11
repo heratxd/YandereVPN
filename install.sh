@@ -1,30 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Yadreno VPN — скрипт установки и управления
-# Запуск: bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh)
+# Yandere VPN — скрипт установки и управления через Docker
+# Запуск: bash <(curl -sL https://raw.githubusercontent.com/heratxd/YandereVPN/main/install.sh)
 # 
 # === АВТОМАТИЧЕСКИЙ ЗАПУСК (БЕЗ ДИАЛОГОВ) ===
 #
 # 1. Запуск прямо с GitHub (для чистой установки или если папки ещё нет):
-# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh) install <BOT_TOKEN> <ADMIN_ID>
-# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh) update [COMMIT_OR_BRANCH]
-# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YadrenoVPN/main/install.sh) reset [COMMIT_OR_BRANCH]
+# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YandereVPN/main/install.sh) install <BOT_TOKEN> <ADMIN_ID>
+# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YandereVPN/main/install.sh) update [COMMIT_OR_BRANCH]
+# bash <(curl -sL https://raw.githubusercontent.com/heratxd/YandereVPN/main/install.sh) reset [COMMIT_OR_BRANCH]
 #
-# 2. Локальный запуск (если репозиторий уже установлен и нужно просто обновить/сбросить):
+# 2. Локальный запуск:
 # bash install.sh update [COMMIT_OR_BRANCH]
 # bash install.sh reset [COMMIT_OR_BRANCH]
 
 set -e
 
-INSTALL_DIR="/root/YadrenoVPN"
-REPO_URL="https://github.com/heratxd/YadrenoVPN.git"
-VENV_DIR="$INSTALL_DIR/venv"
-SERVICE_FILE="yadreno-vpn.service"
+INSTALL_DIR="/root/YandereVPN"
+REPO_URL="https://github.com/heratxd/YandereVPN.git"
+SERVICE_NAME="yandere-vpn-bot"
 
 # Цвета для вывода
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[1;33'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -46,104 +45,85 @@ print_err() {
     echo -e "${RED}[✗]${NC} $1"
 }
 
-# Поиск и отключение старого бота
+# Поиск и отключение старого бот-сервиса (если переходим с systemd)
 cleanup_old_bot_install() {
-    print_header "Поиск и отключение старых версий бота"
+    print_header "Поиск и отключение старых systemd-служб"
 
-    # Находим все службы в /etc/systemd/system/, которые могут относиться к боту
     local found_services=()
-    
-    # 1. Поиск по стандартным именам
-    for svc in "yadreno-vpn" "yadreno" "vpn-bot" "tg-vpn-bot" "vpn_bot"; do
+    for svc in "yadreno-vpn" "yadreno" "yandere-vpn" "vpn-bot" "tg-vpn-bot" "vpn_bot"; do
         if [ -f "/etc/systemd/system/${svc}.service" ]; then
             found_services+=("${svc}.service")
         fi
     done
 
-    # 2. Ищем по содержимому файлов служб в /etc/systemd/system/
+    # Ищем по содержимому файлов служб
     for svc_file in /etc/systemd/system/*.service; do
         if [ -f "$svc_file" ]; then
             local fname=$(basename "$svc_file")
-            # Проверяем, не добавили ли уже
             if [[ ! " ${found_services[@]} " =~ " ${fname} " ]]; then
-                if grep -E -q "ExecStart=.*(python|venv).*/main\.py" "$svc_file" || grep -q "yadreno" "$svc_file" || (grep -q "main.py" "$svc_file" && grep -q "vpn" "$svc_file"); then
+                if grep -E -q "ExecStart=.*(python|venv).*/main\.py" "$svc_file" || grep -q -E "yadreno|yandere" "$svc_file"; then
                     found_services+=("$fname")
                 fi
             fi
         fi
     done
 
-    # 3. Обрабатываем каждую найденную службу
     if [ ${#found_services[@]} -gt 0 ]; then
-        print_warn "Обнаружены потенциально старые службы бота: ${found_services[*]}"
-        
+        print_warn "Обнаружены старые службы бота: ${found_services[*]}"
         for old_svc in "${found_services[@]}"; do
-            print_warn "Обработка службы: $old_svc"
+            print_warn "Остановка и удаление службы: $old_svc"
             
-            # Получаем директорию из WorkingDirectory
+            # Резервное копирование конфига и БД перед удалением
             local old_dir=""
             old_dir=$(grep -oP "WorkingDirectory=\K.*" "/etc/systemd/system/$old_svc" 2>/dev/null | tr -d '\r' || true)
-            
             if [ -n "$old_dir" ] && [ -d "$old_dir" ]; then
-                print_ok "Рабочая директория старого бота: $old_dir"
-                
-                # Резервное копирование старого конфига
                 if [ -f "$old_dir/config.py" ]; then
-                    cp "$old_dir/config.py" /tmp/yadreno_old_config.py
-                    print_ok "Старый config.py скопирован в /tmp/yadreno_old_config.py"
+                    cp "$old_dir/config.py" /tmp/yandere_old_config.py
+                    print_ok "Старый config.py сохранен в /tmp/yandere_old_config.py"
                 fi
-                
-                # Резервное копирование базы данных (SQLite)
                 if [ -f "$old_dir/database/vpn_bot.db" ]; then
-                    cp "$old_dir/database/vpn_bot.db" /tmp/yadreno_old_db.db
-                    print_ok "База данных скопирована из $old_dir/database/"
+                    cp "$old_dir/database/vpn_bot.db" /tmp/yandere_old_db.db
+                    print_ok "База данных SQLite сохранена"
                 elif [ -f "$old_dir/vpn_bot.db" ]; then
-                    cp "$old_dir/vpn_bot.db" /tmp/yadreno_old_db.db
-                    print_ok "База данных скопирована из $old_dir"
+                    cp "$old_dir/vpn_bot.db" /tmp/yandere_old_db.db
+                    print_ok "База данных SQLite сохранена"
                 fi
             fi
 
-            # Останавливаем и отключаем службу
-            print_warn "Убиваем процессы и отключаем службу: $old_svc"
             systemctl stop "$old_svc" 2>/dev/null || true
             systemctl disable "$old_svc" 2>/dev/null || true
             rm -f "/etc/systemd/system/$old_svc"
             print_ok "Служба $old_svc удалена"
         done
-        
         systemctl daemon-reload
     else
-        print_ok "Активных старых служб бота в systemd не найдено"
+        print_ok "Старых systemd-служб бота не найдено"
     fi
 
-    # 4. Убиваем все процессы python, которые запускают main.py (кроме тех, которые запущены из /tmp)
+    # Завершаем старые процессы python если остались
     local pids=$(pgrep -f "python.*main\.py" || true)
     if [ -n "$pids" ]; then
-        print_warn "Найдены запущенные процессы бота (PIDs: $pids). Завершаем их..."
         for pid in $pids; do
-            # Проверяем, не является ли это текущим скриптом или процессом установки/тестирования из /tmp
             local cmdline=$(cat /proc/$pid/cmdline 2>/dev/null | tr '\0' ' ' || true)
             if [[ ! "$cmdline" =~ "/tmp/" ]]; then
-                print_warn "Убиваем процесс PID $pid: $cmdline"
                 kill -9 "$pid" 2>/dev/null || true
             fi
         done
     fi
 }
 
-# Функция слияния конфигураций
+# Функция слияния настроек config.py
 merge_old_config() {
     local source_config=""
-    if [ -f "/tmp/yadreno_old_config.py" ]; then
-        source_config="/tmp/yadreno_old_config.py"
-    elif [ -f "/tmp/yadreno_config_backup.py" ]; then
-        source_config="/tmp/yadreno_config_backup.py"
+    if [ -f "/tmp/yandere_old_config.py" ]; then
+        source_config="/tmp/yandere_old_config.py"
+    elif [ -f "/tmp/yandere_config_backup.py" ]; then
+        source_config="/tmp/yandere_config_backup.py"
     fi
 
     if [ -n "$source_config" ] && [ -f "$INSTALL_DIR/config.py" ]; then
-        print_header "Миграция настроек config.py"
+        print_header "Миграция старых настроек в новый config.py"
         
-        # Создаем временный python-скрипт слияния на основе AST
         cat << 'EOF' > /tmp/migrate_config.py
 import runpy
 import sys
@@ -166,7 +146,6 @@ except Exception as e:
     print(f"Ошибка чтения шаблона конфига: {e}")
     sys.exit(1)
 
-# Вытаскиваем только переменные настроек (в верхнем регистре)
 keys_to_migrate = {
     k: v for k, v in old_vars.items()
     if k.isupper() and not k.startswith('__') and not isinstance(v, (type, type(sys)))
@@ -188,6 +167,10 @@ for node in tree.body:
                 var_name = target.id
                 if var_name in keys_to_migrate:
                     val = keys_to_migrate[var_name]
+                    # Избегаем изменения URL репозитория на старый, если изменилось имя
+                    if var_name == "GITHUB_REPO_URL" and "Yadreno" in val:
+                        val = "https://github.com/heratxd/YandereVPN.git"
+                    
                     if isinstance(val, str):
                         formatted_val = f'"{val}"'
                     else:
@@ -196,12 +179,10 @@ for node in tree.body:
                     replacements.append((node.lineno, node.end_lineno, new_text))
                     replaced_keys.add(var_name)
 
-# Применяем замены в обратном порядке строк
 replacements.sort(key=lambda x: x[0], reverse=True)
 for start, end, new_text in replacements:
     lines[start-1:end] = [new_text + '\n']
 
-# Добавляем переменные, которых не было в новом шаблоне
 remaining_keys = set(keys_to_migrate.keys()) - replaced_keys
 if remaining_keys:
     lines.append("\n# === Дополнительные настройки из старого конфига ===\n")
@@ -216,7 +197,7 @@ if remaining_keys:
 try:
     with open(new_path, 'w', encoding='utf-8') as f:
         f.writelines(lines)
-    print("✅ Настройки из старого config.py успешно перенесены!")
+    print("✅ Настройки из старого config.py успешно импортированы!")
 except Exception as e:
     print(f"Ошибка записи нового конфига: {e}")
     sys.exit(1)
@@ -224,8 +205,8 @@ EOF
 
         python3 /tmp/migrate_config.py "$source_config" "$INSTALL_DIR/config.py"
         rm -f /tmp/migrate_config.py
-        rm -f /tmp/yadreno_old_config.py
-        rm -f /tmp/yadreno_config_backup.py
+        rm -f /tmp/yandere_old_config.py
+        rm -f /tmp/yandere_config_backup.py
     fi
 }
 
@@ -235,7 +216,7 @@ ask_config() {
 
     if [ "$AUTO_MODE" = "1" ]; then
         NEED_WRITE_CONFIG=1
-        print_ok "Автоматический режим: используем переданные параметры"
+        print_ok "Автоматический режим установки"
         return 0
     fi
 
@@ -262,20 +243,21 @@ ask_config() {
     done
 
     while true; do
-        read -p "ADMIN_IDS (ваш Telegram ID): " admin_id
-        if [ -n "$admin_id" ] && [[ "$admin_id" =~ ^[0-9]+$ ]]; then
+        read -p "ADMIN_IDS (ваш Telegram ID через запятую): " admin_id
+        if [ -n "$admin_id" ]; then
             break
         fi
-        print_err "ADMIN_IDS должен быть числом!"
+        print_err "ADMIN_IDS не может быть пустым!"
     done
 
     BOT_TOKEN="$bot_token"
-    ADMIN_ID="$admin_id"
+    # Превращаем строку ID через запятую в массив для config.py
+    ADMIN_ID=$(echo "$admin_id" | sed 's/ //g')
     NEED_WRITE_CONFIG=1
     print_ok "Данные получены"
 }
 
-# Создание/обновление config.py
+# Запись config.py
 write_config() {
     if [ "$NEED_WRITE_CONFIG" != "1" ]; then
         return 0
@@ -286,140 +268,75 @@ write_config() {
     sed -i "s|\"ВАШ_ТОКЕН_БОТА\"|\"$BOT_TOKEN\"|g" "$INSTALL_DIR/config.py"
     sed -i "s|12345678|$ADMIN_ID|g" "$INSTALL_DIR/config.py"
 
-    # Настройки PostgreSQL
-    sed -i "s|DB_TYPE = \"sqlite\"|DB_TYPE = \"postgres\"|g" "$INSTALL_DIR/config.py"
-    sed -i "s|PG_PASSWORD = \"yadreno_pass\"|PG_PASSWORD = \"$PG_PASS\"|g" "$INSTALL_DIR/config.py"
-
-    print_ok "config.py создан с вашими настройками"
+    print_ok "config.py успешно создан"
 }
 
-# Установка системных пакетов
-install_system_deps() {
-    print_header "Установка системных зависимостей"
+# Проверка и установка Docker & Docker Compose
+install_docker() {
+    print_header "Проверка и установка Docker"
 
-    export DEBIAN_FRONTEND=noninteractive
-    export NEEDRESTART_MODE=a
-
-    apt-get update -qq
-    apt-get install -y -qq \
-        python3-venv \
-        python3-pip \
-        git \
-        postgresql \
-        postgresql-contrib \
-        > /dev/null 2>&1
-
-    # Запуск и автозапуск PostgreSQL службы
-    systemctl start postgresql || true
-    systemctl enable postgresql || true
-
-    print_ok "Системные пакеты обновлены"
-    print_ok "python3-venv, python3-pip, git, postgresql установлены"
-}
-
-# Настройка PostgreSQL
-setup_postgresql() {
-    print_header "Настройка локального PostgreSQL"
-
-    # Проверяем, запущен ли PostgreSQL
-    if ! systemctl is-active --quiet postgresql; then
-        systemctl start postgresql || true
-        sleep 2
-    fi
-
-    # Генерация случайного пароля, если его ещё нет
-    if [ -f "$INSTALL_DIR/config.py" ]; then
-        PG_PASS=$(grep -oP "PG_PASSWORD = '\K[^']+" "$INSTALL_DIR/config.py" 2>/dev/null || grep -oP 'PG_PASSWORD = "\K[^"]+' "$INSTALL_DIR/config.py" 2>/dev/null || true)
-    fi
-    if [ -z "$PG_PASS" ]; then
-        PG_PASS=$(openssl rand -hex 16 2>/dev/null || echo "yadreno_secure_pass_$(date +%s)")
-    fi
-
-    # Создание пользователя и БД
-    sudo -u postgres psql -c "CREATE USER yadreno_user WITH PASSWORD '$PG_PASS';" >/dev/null 2>&1 || true
-    sudo -u postgres psql -c "ALTER USER yadreno_user WITH PASSWORD '$PG_PASS';" >/dev/null 2>&1 || true
-    sudo -u postgres psql -c "CREATE DATABASE yadreno_vpn OWNER yadreno_user;" >/dev/null 2>&1 || true
-    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE yadreno_vpn TO yadreno_user;" >/dev/null 2>&1 || true
-
-    print_ok "База данных yadreno_vpn и пользователь yadreno_user настроены"
-}
-
-
-# Создание виртуального окружения и установка зависимостей
-setup_venv() {
-    print_header "Настройка виртуального окружения Python"
-
-    python3 -m venv "$VENV_DIR"
-    print_ok "Виртуальное окружение создано: $VENV_DIR"
-
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade pip -q
-    pip install --upgrade -r "$INSTALL_DIR/requirements.txt" -q
-    deactivate
-
-    print_ok "Зависимости Python установлены в venv"
-}
-
-# Настройка systemd сервиса
-setup_systemd() {
-    print_header "Настройка автозапуска (systemd)"
-
-    cat > "$INSTALL_DIR/$SERVICE_FILE" << EOF
-[Unit]
-Description=Yadreno VPN Bot
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=$INSTALL_DIR
-ExecStart=$VENV_DIR/bin/python main.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    cp "$INSTALL_DIR/$SERVICE_FILE" /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl enable yadreno-vpn > /dev/null 2>&1
-
-    print_ok "systemd сервис установлен и включён в автозапуск"
-}
-
-# Запуск сервиса
-start_service() {
-    systemctl start yadreno-vpn
-    sleep 2
-
-    if systemctl is-active --quiet yadreno-vpn; then
-        print_ok "Бот запущен и работает!"
+    if ! command -v docker &> /dev/null; then
+        print_warn "Docker не найден. Устанавливаем официальный Docker..."
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh
+        rm get-docker.sh
+        systemctl start docker || true
+        systemctl enable docker || true
+        print_ok "Docker успешно установлен!"
     else
-        print_err "Бот не запустился. Проверьте логи:"
-        echo "  systemctl status yadreno-vpn"
-        echo "  journalctl -u yadreno-vpn -n 50"
+        print_ok "Docker уже установлен"
     fi
+
+    # Проверяем docker compose (v2) или docker-compose (v1)
+    if ! docker compose version &> /dev/null; then
+        if command -v docker-compose &> /dev/null; then
+            print_ok "Docker Compose (v1) доступен"
+        else
+            print_warn "Docker Compose не найден. Установка плагина docker-compose-plugin..."
+            apt-get update -qq && apt-get install -y -qq docker-compose-plugin > /dev/null 2>&1 || true
+            if ! docker compose version &> /dev/null; then
+                print_err "Не удалось автоматически установить Docker Compose. Пожалуйста, установите его вручную."
+                exit 1
+            fi
+            print_ok "Docker Compose успешно установлен!"
+        fi
+    else
+        print_ok "Docker Compose (v2) доступен"
+    fi
+}
+
+# Запуск Compose
+run_docker_compose() {
+    print_header "Запуск Docker контейнеров"
+    cd "$INSTALL_DIR"
+
+    # Определяем команду compose
+    local compose_cmd="docker compose"
+    if ! docker compose version &> /dev/null && command -v docker-compose &> /dev/null; then
+        compose_cmd="docker-compose"
+    fi
+
+    $compose_cmd down --remove-orphans || true
+    $compose_cmd up --build -d
+    print_ok "Контейнеры запущены успешно!"
 }
 
 # ============================================================
 # ПУНКТ 1: УСТАНОВКА
 # ============================================================
 do_install() {
-    print_header "🚀 Установка Yadreno VPN"
+    print_header "🚀 Установка Yandere VPN"
 
-    # Ищем и отключаем старые версии бота перед установкой
     cleanup_old_bot_install
+    install_docker
 
-    # Проверяем, не установлен ли уже в целевой каталог
     if [ -d "$INSTALL_DIR" ] && [ -d "$INSTALL_DIR/.git" ]; then
-        print_warn "Yadreno VPN уже установлен в $INSTALL_DIR"
+        print_warn "Yandere VPN уже установлен в $INSTALL_DIR"
         if [ "$AUTO_MODE" = "1" ]; then
-            print_warn "Автоматический режим: принудительная переустановка"
             reinstall_choice="1"
         else
             echo ""
-            echo "  1) Переустановить (удалить и установить заново)"
+            echo "  1) Переустановить (удалить текущую папку и установить заново)"
             echo "  2) Отмена"
             read -p "Выберите [1-2]: " reinstall_choice
         fi
@@ -427,98 +344,113 @@ do_install() {
             echo "Установка отменена."
             return 0
         fi
-        systemctl stop yadreno-vpn 2>/dev/null || true
-        # Сохраняем config.py и базу данных
+
+        # Останавливаем старые докер контейнеры
+        if [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
+            cd "$INSTALL_DIR"
+            docker compose down || docker-compose down || true
+        fi
+
+        # Сохраняем конфиг и БД перед очисткой каталога
         if [ -f "$INSTALL_DIR/config.py" ]; then
-            cp "$INSTALL_DIR/config.py" /tmp/yadreno_config_backup.py
+            cp "$INSTALL_DIR/config.py" /tmp/yandere_config_backup.py
             BACKUP_CONFIG=1
         fi
-        if [ -f "$INSTALL_DIR/vpn_bot.db" ]; then
-            cp "$INSTALL_DIR/vpn_bot.db" /tmp/yadreno_db_backup.db
+        if [ -f "$INSTALL_DIR/database/vpn_bot.db" ]; then
+            cp "$INSTALL_DIR/database/vpn_bot.db" /tmp/yandere_db_backup.db
+            BACKUP_DB=1
+        elif [ -f "$INSTALL_DIR/vpn_bot.db" ]; then
+            cp "$INSTALL_DIR/vpn_bot.db" /tmp/yandere_db_backup.db
             BACKUP_DB=1
         fi
         rm -rf "$INSTALL_DIR"
     fi
 
-    # Запрашиваем настройки до начала установки
     ask_config
 
-    # Установка системных зависимостей
-    install_system_deps
-
-    # Клонирование репозитория
-    print_header "Загрузка Yadreno VPN"
+    print_header "Загрузка кода Yandere VPN"
     git clone "$REPO_URL" "$INSTALL_DIR" -q
     cd "$INSTALL_DIR"
-    print_ok "Репозиторий клонирован"
+    print_ok "Репозиторий клонирован в $INSTALL_DIR"
 
-    # Восстановление backup'ов при переустановке
-    if [ "$BACKUP_CONFIG" = "1" ] && [ -f "/tmp/yadreno_config_backup.py" ]; then
-        cp /tmp/yadreno_config_backup.py "$INSTALL_DIR/config.py"
-        rm /tmp/yadreno_config_backup.py
-        print_ok "config.py восстановлен из резервной копии"
+    # Восстановление резервных копий
+    if [ "$BACKUP_CONFIG" = "1" ] && [ -f "/tmp/yandere_config_backup.py" ]; then
+        cp /tmp/yandere_config_backup.py "$INSTALL_DIR/config.py"
+        rm /tmp/yandere_config_backup.py
+        print_ok "Конфигурация восстановлена"
         NEED_WRITE_CONFIG=0
     fi
-    if [ "$BACKUP_DB" = "1" ] && [ -f "/tmp/yadreno_db_backup.db" ]; then
-        mkdir -p "$INSTALL_DIR/database"
-        cp /tmp/yadreno_db_backup.db "$INSTALL_DIR/database/vpn_bot.db"
-        rm /tmp/yadreno_db_backup.db
-        print_ok "База данных восстановлена из резервной копии"
+    
+    mkdir -p "$INSTALL_DIR/database"
+    mkdir -p "$INSTALL_DIR/logs"
+
+    if [ "$BACKUP_DB" = "1" ] && [ -f "/tmp/yandere_db_backup.db" ]; then
+        cp /tmp/yandere_db_backup.db "$INSTALL_DIR/database/vpn_bot.db"
+        rm /tmp/yandere_db_backup.db
+        print_ok "База данных SQLite восстановлена"
     fi
 
-    # Восстановление базы данных старого бота
-    if [ -f "/tmp/yadreno_old_db.db" ]; then
-        mkdir -p "$INSTALL_DIR/database"
-        cp /tmp/yadreno_old_db.db "$INSTALL_DIR/database/vpn_bot.db"
-        rm -f "/tmp/yadreno_old_db.db"
-        print_ok "База данных старого бота перенесена в новый бот"
+    if [ -f "/tmp/yandere_old_db.db" ]; then
+        cp /tmp/yandere_old_db.db "$INSTALL_DIR/database/vpn_bot.db"
+        rm -f "/tmp/yandere_old_db.db"
+        print_ok "База данных старого бота успешно импортирована"
     fi
 
-    # Настройка PostgreSQL
-    setup_postgresql
-
-    # Запись config.py
     write_config
-
-    # Слияние настроек старого config.py с новым шаблоном
     merge_old_config
 
-    # Виртуальное окружение и зависимости
-    setup_venv
+    # Проверка на наличие 3x-ui на хосте
+    if [ ! -d "/etc/x-ui" ] && [ ! -f "/usr/local/x-ui/bin/x-ui.db" ]; then
+        print_warn "Локальная панель 3x-ui не обнаружена на сервере."
+        if [ "$AUTO_MODE" != "1" ]; then
+            read -p "Хотите автоматически установить официальную панель 3x-ui на хост? (y/N): " install_xui
+            install_xui=${install_xui:-N}
+            if [[ "$install_xui" =~ ^[YyДд]$ ]]; then
+                print_header "Установка 3x-ui..."
+                bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+                print_ok "3x-ui успешно установлена!"
+            fi
+        fi
+    fi
 
-    # Настройка автозапуска
-    setup_systemd
+    # Запускаем СУБД PostgreSQL
+    print_header "Инициализация базы данных PostgreSQL"
+    local compose_cmd="docker compose"
+    if ! docker compose version &> /dev/null && command -v docker-compose &> /dev/null; then
+        compose_cmd="docker-compose"
+    fi
+    $compose_cmd up -d db
+    print_ok "Контейнер базы данных запущен, ожидаем инициализации..."
+    sleep 4
 
-    # Запуск
-    print_header "Запуск бота"
-    start_service
+    # Запускаем автоопределение 3x-ui внутри Docker-контейнера в интерактивном режиме
+    print_header "Настройка привязки 3x-ui"
+    $compose_cmd run --rm yandere-vpn-bot python3 detect_xui.py || true
+
+    run_docker_compose
 
     print_header "✅ Установка завершена!"
-    echo -e "  Директория: ${GREEN}$INSTALL_DIR${NC}"
-    echo -e "  Виртуальное окружение: ${GREEN}$VENV_DIR${NC}"
-    echo -e "  Управление сервисом:"
-    echo -e "    ${CYAN}systemctl status yadreno-vpn${NC}   — статус"
-    echo -e "    ${CYAN}systemctl restart yadreno-vpn${NC}  — перезапуск"
-    echo -e "    ${CYAN}systemctl stop yadreno-vpn${NC}     — остановка"
-    echo -e "    ${CYAN}journalctl -u yadreno-vpn -f${NC}   — логи"
+    echo -e "  Директория проекта: ${GREEN}$INSTALL_DIR${NC}"
+    echo -e "  Логи: ${CYAN}docker logs -f yandere-vpn-bot${NC}"
+    echo -e "  Перезапуск: ${CYAN}docker restart yandere-vpn-bot${NC}"
 }
 
 # ============================================================
-# ПУНКТ 2: МЯГКОЕ ОБНОВЛЕНИЕ (git pull)
+# ПУНКТ 2: ОБНОВЛЕНИЕ (git pull)
 # ============================================================
 do_soft_update() {
-    print_header "🔄 Мягкое обновление"
+    print_header "🔄 Обновление бота"
 
     if [ ! -d "$INSTALL_DIR/.git" ]; then
-        print_err "Yadreno VPN не установлен в $INSTALL_DIR"
+        print_err "Yandere VPN не установлен в $INSTALL_DIR"
         return 1
     fi
 
     cd "$INSTALL_DIR"
 
-    # Сохраняем текущие изменения в stash (если есть)
+    # Сохраняем локальные правки в stash если есть
     if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-        print_warn "Обнаружены локальные изменения — сохраняем через git stash"
+        print_warn "Сохраняем локальные изменения во временный stash..."
         git stash -q
         STASHED=1
     fi
@@ -532,46 +464,31 @@ do_soft_update() {
     fi
 
     if [ "$STASHED" = "1" ]; then
-        git stash pop -q 2>/dev/null || print_warn "Не удалось восстановить локальные изменения (конфликт)"
+        git stash pop -q 2>/dev/null || print_warn "Локальные правки не удалось применить автоматически"
     fi
 
-    print_ok "Код обновлён"
+    print_ok "Код обновлен"
 
-    # Обновляем зависимости
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade -r requirements.txt -q
-    deactivate
-    print_ok "Зависимости обновлены"
-
-    # Перезапуск
-    systemctl restart yadreno-vpn
-    sleep 2
-
-    if systemctl is-active --quiet yadreno-vpn; then
-        print_ok "Бот перезапущен и работает!"
-    else
-        print_err "Бот не запустился после обновления"
-        echo "  systemctl status yadreno-vpn"
-    fi
+    run_docker_compose
 }
 
 # ============================================================
-# ПУНКТ 3: ЖЁСТКАЯ ПЕРЕЗАПИСЬ (git fetch + reset)
+# ПУНКТ 3: СБРОС И ПЕРЕЗАПИСЬ (git reset --hard)
 # ============================================================
 do_hard_reset() {
-    print_header "⚠️  Жёсткая перезапись"
+    print_header "⚠️ Сброс изменений и перезапись"
 
     if [ ! -d "$INSTALL_DIR/.git" ]; then
-        print_err "Yadreno VPN не установлен в $INSTALL_DIR"
+        print_err "Yandere VPN не установлен в $INSTALL_DIR"
         return 1
     fi
 
-    echo -e "${RED}Внимание! Все локальные изменения в коде будут перезаписаны.${NC}"
-    echo -e "${YELLOW}config.py и vpn_bot.db затронуты НЕ будут.${NC}"
+    echo -e "${RED}Внимание! Все ваши ручные изменения в коде будут стерты.${NC}"
+    echo -e "${YELLOW}Файлы config.py и база данных затронуты НЕ будут.${NC}"
     if [ "$AUTO_MODE" = "1" ]; then
         confirm="y"
     else
-        read -p "Продолжить? (y/N): " confirm
+        read -p "Вы уверены, что хотите сбросить код? (y/N): " confirm
     fi
     if [[ ! "$confirm" =~ ^[YyДд]$ ]]; then
         echo "Отменено."
@@ -580,32 +497,17 @@ do_hard_reset() {
 
     cd "$INSTALL_DIR"
 
-    # Жёсткая перезапись: config.py и vpn_bot.db в .gitignore — не затрагиваются
     git fetch origin -q
     local target="origin/main"
     if [ -n "$TARGET_COMMIT" ]; then
         target="$TARGET_COMMIT"
     fi
+
     git reset --hard "$target" -q
     git clean -fd -q
-    print_ok "Код перезаписан ($target)"
+    print_ok "Код полностью перезаписан до версии $target"
 
-    # Обновляем зависимости
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade -r requirements.txt -q
-    deactivate
-    print_ok "Зависимости обновлены"
-
-    # Перезапуск
-    systemctl restart yadreno-vpn
-    sleep 2
-
-    if systemctl is-active --quiet yadreno-vpn; then
-        print_ok "Бот перезапущен и работает!"
-    else
-        print_err "Бот не запустился после перезаписи"
-        echo "  systemctl status yadreno-vpn"
-    fi
+    run_docker_compose
 }
 
 # ============================================================
@@ -615,12 +517,12 @@ show_menu() {
     clear
     echo -e "${CYAN}"
     echo "  ╔═══════════════════════════════════════╗"
-    echo "  ║       🌐 Yadreno VPN Manager         ║"
+    echo "  ║       🌐 Yandere VPN Manager          ║"
     echo "  ╚═══════════════════════════════════════╝"
     echo -e "${NC}"
-    echo "  1) 🚀 Установка"
-    echo "  2) 🔄 Мягкое обновление (git pull)"
-    echo "  3) ⚠️  Жёсткая перезапись (с GitHub)"
+    echo "  1) 🚀 Установить / Переустановить бота"
+    echo "  2) 🔄 Обновить бот до свежей версии (git pull)"
+    echo "  3) ⚠️  Сбросить код бота (сброс ручных изменений)"
     echo ""
     echo "  0) Выход"
     echo ""
@@ -637,11 +539,11 @@ show_menu() {
 
 # Проверка root-прав
 if [ "$EUID" -ne 0 ]; then
-    print_err "Скрипт должен быть запущен от root (sudo)"
+    print_err "Скрипт должен быть запущен от имени администратора (root/sudo)"
     exit 1
 fi
 
-# Проверка на автоматический режим (передан аргумент действия)
+# Проверка авто-режима
 if [ -n "$1" ]; then
     ACTION="$1"
     export AUTO_MODE="1"
@@ -649,7 +551,7 @@ if [ -n "$1" ]; then
     case "$ACTION" in
         install)
             if [ -z "$2" ] || [ -z "$3" ]; then
-                print_err "Для автоматической установки требуются BOT_TOKEN и ADMIN_ID"
+                print_err "Недостаточно параметров для автоустановки."
                 echo "Использование: bash install.sh install <BOT_TOKEN> <ADMIN_ID>"
                 exit 1
             fi
@@ -666,7 +568,7 @@ if [ -n "$1" ]; then
             do_hard_reset 
             ;;
         *)
-            print_err "Неизвестное действие: $ACTION. Доступно: install, update, reset"
+            print_err "Неизвестная команда: $ACTION"
             exit 1
             ;;
     esac

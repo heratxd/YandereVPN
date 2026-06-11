@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  yandere-vpn-bot:
+    build: .
+    container_name: yandere-vpn-bot
+    restart: always
+    environment:
+      - TZ=Europe/Moscow
+    volumes:
+      # Монтируем файл конфигурации
+      - ./config.py:/app/config.py
+      # Папка для локальной БД SQLite и логов
+      - ./database:/app/database
+      - ./logs:/app/logs
+      # Доступ к настройкам 3x-ui для автоопределения
+      - /etc/x-ui:/etc/x-ui:ro
+      # Сохранение сертификатов Let's Encrypt
+      - /etc/letsencrypt:/etc/letsencrypt
+    ports:
+      # Открываем порт для вебхуков (если включены)
+      - "8080:8080"
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:15-alpine
+    container_name: yandere-vpn-db
+    restart: always
+    environment:
+      POSTGRES_DB: yandere_vpn
+      POSTGRES_USER: yandere_user
+      POSTGRES_PASSWORD: yandere_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:

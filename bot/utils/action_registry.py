@@ -344,6 +344,153 @@ def _resolve_renew_pay_crystalpay(ctx: dict) -> Optional[dict]:
     return {"callback_data": f"renew_crystalpay_tariff:{key_id}"}
 
 
+def _resolve_pay_lava(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через Lava."""
+    from database.requests import is_lava_configured
+
+    if not is_lava_configured():
+        return None
+
+    return {"callback_data": "pay_lava"}
+
+
+def _resolve_pay_freekassa(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через Freekassa."""
+    from database.requests import is_freekassa_configured
+
+    if not is_freekassa_configured():
+        return None
+
+    return {"callback_data": "pay_freekassa"}
+
+
+def _resolve_pay_rukassa(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через RuKassa."""
+    from database.requests import is_rukassa_configured
+
+    if not is_rukassa_configured():
+        return None
+
+    return {"callback_data": "pay_rukassa"}
+
+
+def _resolve_pay_payok(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через Payok."""
+    from database.requests import is_payok_configured
+
+    if not is_payok_configured():
+        return None
+
+    return {"callback_data": "pay_payok"}
+
+
+def _resolve_pay_nowpayments(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через NowPayments."""
+    from database.requests import is_nowpayments_configured
+
+    if not is_nowpayments_configured():
+        return None
+
+    return {"callback_data": "pay_nowpayments"}
+
+
+def _resolve_pay_robokassa(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через Robokassa."""
+    from database.requests import is_robokassa_configured
+
+    if not is_robokassa_configured():
+        return None
+
+    return {"callback_data": "pay_robokassa"}
+
+
+def _resolve_renew_pay_lava(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через Lava."""
+    from database.requests import is_lava_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_lava_configured():
+        return None
+
+    return {"callback_data": f"renew_lava_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_freekassa(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через Freekassa."""
+    from database.requests import is_freekassa_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_freekassa_configured():
+        return None
+
+    return {"callback_data": f"renew_freekassa_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_rukassa(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через RuKassa."""
+    from database.requests import is_rukassa_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_rukassa_configured():
+        return None
+
+    return {"callback_data": f"renew_rukassa_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_payok(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через Payok."""
+    from database.requests import is_payok_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_payok_configured():
+        return None
+
+    return {"callback_data": f"renew_payok_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_nowpayments(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через NowPayments."""
+    from database.requests import is_nowpayments_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_nowpayments_configured():
+        return None
+
+    return {"callback_data": f"renew_nowpayments_tariff:{key_id}"}
+
+
+def _resolve_renew_pay_robokassa(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через Robokassa."""
+    from database.requests import is_robokassa_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_robokassa_configured():
+        return None
+
+    return {"callback_data": f"renew_robokassa_tariff:{key_id}"}
+
+
+def _resolve_pay_yoomoney(ctx: dict) -> Optional[dict]:
+    """Кнопка оплаты через ЮMoney."""
+    from database.requests import is_yoomoney_configured
+
+    if not is_yoomoney_configured():
+        return None
+
+    return {"callback_data": "pay_yoomoney"}
+
+
+def _resolve_renew_pay_yoomoney(ctx: dict) -> Optional[dict]:
+    """Кнопка продления через ЮMoney."""
+    from database.requests import is_yoomoney_configured
+
+    key_id = _get_renew_key_id(ctx)
+    if not key_id or not is_yoomoney_configured():
+        return None
+
+    return {"callback_data": f"renew_pay_yoomoney:{key_id}"}
+
+
 def _resolve_renew_back(ctx: dict) -> Optional[dict]:
     """Кнопка возврата со страницы выбора оплаты продления к ключу."""
     key_id = _get_renew_key_id(ctx)
@@ -366,6 +513,13 @@ SYSTEM_BUTTONS: Dict[str, Callable[[dict], Optional[dict]]] = {
     "btn_pay_cryptobot": _resolve_pay_cryptobot,
     "btn_pay_xrocket": _resolve_pay_xrocket,
     "btn_pay_crystalpay": _resolve_pay_crystalpay,
+    "btn_pay_lava":    _resolve_pay_lava,
+    "btn_pay_freekassa": _resolve_pay_freekassa,
+    "btn_pay_rukassa": _resolve_pay_rukassa,
+    "btn_pay_payok":   _resolve_pay_payok,
+    "btn_pay_nowpayments": _resolve_pay_nowpayments,
+    "btn_pay_robokassa": _resolve_pay_robokassa,
+    "btn_pay_yoomoney": _resolve_pay_yoomoney,
     "btn_pay_demo":    _resolve_pay_demo,
     "btn_pay_balance": _resolve_pay_balance,
     "btn_renew_pay_crypto": _resolve_renew_pay_crypto,
@@ -378,6 +532,13 @@ SYSTEM_BUTTONS: Dict[str, Callable[[dict], Optional[dict]]] = {
     "btn_renew_pay_cryptobot": _resolve_renew_pay_cryptobot,
     "btn_renew_pay_xrocket": _resolve_renew_pay_xrocket,
     "btn_renew_pay_crystalpay": _resolve_renew_pay_crystalpay,
+    "btn_renew_pay_lava": _resolve_renew_pay_lava,
+    "btn_renew_pay_freekassa": _resolve_renew_pay_freekassa,
+    "btn_renew_pay_rukassa": _resolve_renew_pay_rukassa,
+    "btn_renew_pay_payok":   _resolve_renew_pay_payok,
+    "btn_renew_pay_nowpayments": _resolve_renew_pay_nowpayments,
+    "btn_renew_pay_robokassa": _resolve_renew_pay_robokassa,
+    "btn_renew_pay_yoomoney": _resolve_renew_pay_yoomoney,
     "btn_renew_pay_demo": _resolve_renew_pay_demo,
     "btn_renew_pay_balance": _resolve_renew_pay_balance,
     "btn_renew_back": _resolve_renew_back,

@@ -22,11 +22,15 @@ from database.requests import (
     get_yookassa_credentials, get_wata_token, get_platega_credentials,
     get_cardlink_credentials, get_cryptobot_token, is_cryptobot_sandbox,
     get_xrocket_token, is_xrocket_sandbox, get_crystalpay_credentials,
+    get_lava_credentials, get_freekassa_credentials, get_rukassa_credentials,
+    get_payok_credentials, get_nowpayments_api_key, get_robokassa_credentials,
+    get_yoomoney_wallet,
     is_referral_enabled, get_referral_reward_type, get_active_referral_levels,
     get_user_referrer, get_user_referral_coefficient, get_user_balance,
     add_to_balance, deduct_from_balance, add_days_to_first_active_key,
     update_referral_stat
 )
+
 from bot.services.exchange_rate import get_usd_rub_rate
 
 logger = logging.getLogger(__name__)
@@ -1659,4 +1663,695 @@ async def complete_payment_flow(
         else:
             logger.exception(f'Ошибка обработки {payment_type} платежа: {e}')
             await message.answer('❌ Произошла ошибка при обработке платежа.', parse_mode='HTML')
+
+
+# ── Lava ──────────────────────────────────────────────────────────────────────
+
+async def create_lava_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Создаёт счёт в Lava API.
+    """
+    import json
+    shop_id, api_key = get_lava_credentials()
+    if not shop_id or not api_key:
+        raise ValueError("Lava: не настроены shop_id или api_key")
+        
+    payload = {
+        "shopId": shop_id,
+        "sum": float(amount_rub),
+        "orderId": order_id,
+        "comment": description[:255]
+    }
+    
+    # Добавляем hookUrl если он настроен
+    webhook_base = get_setting('webhook_server_base_url', '')
+    if webhook_base:
+        payload["hookUrl"] = f"{webhook_base.rstrip('/')}/webhook/lava"
+        
+    json_data = json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
+    signature = hmac.new(
+        api_key.encode('utf-8'),
+        json_data.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Signature': signature
+    }
+    
+    url = "https://api.lava.ru/business/invoice/create"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=json_data, headers=headers) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"Lava API: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("Lava API вернул некорректный ответ")
+                
+            if response.status != 200 or not data or data.get('status') == 'error':
+                error_desc = data.get('error') or data.get('message') or "Неизвестная ошибка"
+                logger.error(f"Lava API ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"Lava API ошибка: {error_desc}")
+                
+            invoice_data = data.get("data")
+            if not invoice_data:
+                logger.error(f"Lava API: пустые данные 'data': {data}")
+                raise RuntimeError("Lava API вернул пустой результат")
+                
+            invoice_id = invoice_data.get("id")
+            pay_url = invoice_data.get("url")
+            
+            if not invoice_id or not pay_url:
+                logger.error(f"Lava API не вернул id/url: {data}")
+                raise RuntimeError("Lava API не вернул данные платёжной ссылки")
+                
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pay_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            qr_image_data = bio.getvalue()
+            
+            logger.info(f"Lava счёт создан: invoice_id={invoice_id}, order_id={order_id}, amount={amount_rub} RUB")
+            
+            return {
+                'lava_invoice_id': str(invoice_id),
+                'qr_image_data': qr_image_data,
+                'qr_url': pay_url,
+                'status': str(invoice_data.get('status', 'created')).lower()
+            }
+
+
+async def check_lava_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в Lava.
+    """
+    import json
+    shop_id, api_key = get_lava_credentials()
+    if not shop_id or not api_key:
+        raise ValueError("Lava: не настроены shop_id или api_key")
+        
+    payload = {
+        "shopId": shop_id,
+        "invoiceId": invoice_id
+    }
+    
+    json_data = json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
+    signature = hmac.new(
+        api_key.encode('utf-8'),
+        json_data.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Signature': signature
+    }
+    
+    url = "https://api.lava.ru/business/invoice/status"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=json_data, headers=headers) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"Lava статус: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("Lava API вернул некорректный ответ")
+                
+            if response.status != 200 or not data or data.get('status') == 'error':
+                error_desc = data.get('error') or data.get('message') or "Неизвестная ошибка"
+                logger.error(f"Lava API статус ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"Lava API ошибка: {error_desc}")
+                
+            invoice_data = data.get("data")
+            if not invoice_data:
+                return 'pending'
+                
+            status = str(invoice_data.get('status', '')).lower()
+            if status in ('success', 'paid'):
+                return 'paid'
+            elif status in ('fail', 'expired', 'error'):
+                return 'failed'
+            else:
+                return 'pending'
+
+
+# ── Freekassa ─────────────────────────────────────────────────────────────────
+
+async def create_freekassa_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Формирует ссылку для оплаты через Freekassa SCI (Shop Cart Interface).
+    """
+    shop_id, api_key, secret_1 = get_freekassa_credentials()
+    if not shop_id or not secret_1:
+        raise ValueError("Freekassa: не настроены shop_id или secret_1")
+        
+    currency = "RUB"
+    # Подпись для SCI формы: md5(shop_id:amount:secret_1:currency:order_id)
+    sign_str = f"{shop_id}:{amount_rub:.2f}:{secret_1}:{currency}:{order_id}"
+    sign = hashlib.md5(sign_str.encode('utf-8')).hexdigest()
+    
+    pay_url = f"https://pay.freekassa.ru/?m={shop_id}&oa={amount_rub:.2f}&o={order_id}&currency={currency}&s={sign}"
+    
+    # Генерируем QR-код
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(pay_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    bio = io.BytesIO()
+    img.save(bio, format="PNG")
+    qr_image_data = bio.getvalue()
+    
+    logger.info(f"Freekassa SCI ссылка создана: order_id={order_id}, amount={amount_rub} RUB")
+    
+    return {
+        'freekassa_invoice_id': order_id,
+        'qr_image_data': qr_image_data,
+        'qr_url': pay_url,
+        'status': 'pending'
+    }
+
+
+async def check_freekassa_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в Freekassa по API v1.
+    """
+    import time
+    shop_id, api_key, _ = get_freekassa_credentials()
+    if not shop_id or not api_key:
+        raise ValueError("Freekassa: не настроены shop_id или api_key")
+        
+    nonce = int(time.time() * 1000)
+    payload = {
+        'shopId': int(shop_id),
+        'nonce': nonce,
+        'paymentId': invoice_id
+    }
+    
+    sorted_keys = sorted(payload.keys())
+    message = '|'.join(str(payload[k]) for k in sorted_keys)
+    signature = hmac.new(api_key.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
+    payload['signature'] = signature
+    
+    url = "https://api.freekassa.ru/v1/orders"
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload) as response:
+            if response.status != 200:
+                text = await response.text()
+                logger.error(f"Freekassa API status check error {response.status}: {text}")
+                return 'pending'
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"Freekassa API: cannot parse status check response: {text}")
+                return 'pending'
+            
+            orders = data.get('orders', [])
+            if not orders:
+                return 'pending'
+            
+            order = orders[0]
+            status_code = order.get('status')
+            if status_code is None:
+                status_code = order.get('orderStatus')
+                
+            if status_code == 1:
+                return 'paid'
+            elif status_code in (8, 9):
+                return 'failed'
+            return 'pending'
+
+
+# ── Rukassa ───────────────────────────────────────────────────────────────────
+
+async def create_rukassa_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Создаёт счёт в RuKassa.
+    """
+    shop_id, token = get_rukassa_credentials()
+    if not shop_id or not token:
+        raise ValueError("Rukassa: не настроены shop_id или token")
+        
+    payload = {
+        "shop_id": int(shop_id),
+        "order_id": order_id,
+        "amount": float(amount_rub),
+        "token": token,
+        "currency": "RUB"
+    }
+    
+    url = "https://lk.rukassa.pro/api/v1/create"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=payload) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"Rukassa API: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("Rukassa API вернул некорректный ответ")
+                
+            if response.status not in (200, 201) or not data or data.get('error'):
+                error_desc = data.get('message') or "Неизвестная ошибка"
+                logger.error(f"Rukassa API ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"Rukassa API ошибка: {error_desc}")
+                
+            invoice_id = data.get("id")
+            pay_url = data.get("url")
+            
+            if not invoice_id or not pay_url:
+                logger.error(f"Rukassa API не вернул id/url: {data}")
+                raise RuntimeError("Rukassa API не вернул данные платёжной ссылки")
+                
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pay_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            qr_image_data = bio.getvalue()
+            
+            logger.info(f"Rukassa счёт создан: invoice_id={invoice_id}, order_id={order_id}, amount={amount_rub} RUB")
+            
+            return {
+                'rukassa_invoice_id': str(invoice_id),
+                'qr_image_data': qr_image_data,
+                'qr_url': pay_url,
+                'status': 'pending'
+            }
+
+
+async def check_rukassa_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в RuKassa.
+    """
+    shop_id, token = get_rukassa_credentials()
+    if not shop_id or not token:
+        raise ValueError("Rukassa: не настроены shop_id или token")
+        
+    payload = {
+        "id": int(invoice_id),
+        "shop_id": int(shop_id),
+        "token": token
+    }
+    
+    url = "https://lk.rukassa.pro/api/v1/getPayInfo"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=payload) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"Rukassa статус: невозможно разобрать ответ ({response.status}): {text}")
+                return 'pending'
+                
+            if response.status not in (200, 201) or not data or data.get('error'):
+                return 'pending'
+                
+            status = str(data.get('status', '')).upper()
+            if status == 'PAID':
+                return 'paid'
+            elif status in ('WAIT', 'WAITING'):
+                return 'pending'
+            else:
+                return 'failed'
+
+
+# ── Payok ─────────────────────────────────────────────────────────────────────
+
+async def create_payok_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Формирует ссылку для оплаты через Payok.
+    """
+    shop_id, api_key, secret_key = get_payok_credentials()
+    if not shop_id or not secret_key:
+        raise ValueError("Payok: не настроены shop_id или secret_key")
+        
+    currency = "RUB"
+    sign_str = f"{amount_rub:.2f}|{order_id}|{shop_id}|{currency}|{description[:255]}|{secret_key}"
+    sign = hashlib.md5(sign_str.encode('utf-8')).hexdigest()
+    
+    params = {
+        'amount': f"{amount_rub:.2f}",
+        'payment': order_id,
+        'shop': shop_id,
+        'currency': currency,
+        'desc': description[:255],
+        'sign': sign
+    }
+    
+    from urllib.parse import urlencode
+    pay_url = f"https://payok.io/pay?{urlencode(params)}"
+    
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(pay_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    bio = io.BytesIO()
+    img.save(bio, format="PNG")
+    qr_image_data = bio.getvalue()
+    
+    logger.info(f"Payok ссылка создана: order_id={order_id}, amount={amount_rub} RUB")
+    
+    return {
+        'payok_invoice_id': order_id,
+        'qr_image_data': qr_image_data,
+        'qr_url': pay_url,
+        'status': 'pending'
+    }
+
+
+async def check_payok_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в Payok.
+    """
+    shop_id, api_key, secret_key = get_payok_credentials()
+    if not shop_id or not api_key:
+        raise ValueError("Payok: не настроены shop_id или api_key")
+        
+    api_id = get_setting('payok_api_id', '')
+    if not api_id:
+        logger.error("Payok API ID не настроен в настройках.")
+        return 'pending'
+        
+    payload = {
+        "API_ID": int(api_id),
+        "API_KEY": api_key,
+        "shop": int(shop_id),
+        "payment": invoice_id
+    }
+    
+    url = "https://payok.io/api/transaction"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=payload) as response:
+            try:
+                data = await response.json(content_type=None)
+            except Exception:
+                text = await response.text()
+                logger.error(f"Payok статус: невозможно разобрать ответ ({response.status}): {text}")
+                return 'pending'
+                
+            if data.get('status') == 'error':
+                logger.error(f"Payok API статус ошибка: {data.get('error_text')}")
+                return 'pending'
+                
+            for k, val in data.items():
+                if k.isdigit() and isinstance(val, dict):
+                    tx_status = str(val.get('transaction_status', ''))
+                    if tx_status == '1':
+                        return 'paid'
+                    elif tx_status == '0':
+                        return 'pending'
+                    else:
+                        return 'failed'
+            return 'pending'
+
+
+# ── NowPayments ───────────────────────────────────────────────────────────────
+
+async def create_nowpayments_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Создаёт счёт в NowPayments.
+    """
+    api_key = get_nowpayments_api_key()
+    if not api_key:
+        raise ValueError("NowPayments: не настроен API key")
+        
+    usd_rate = get_usd_rub_rate()
+    if not usd_rate:
+        usd_rate = 90.0
+    usd_amount = amount_rub / usd_rate
+    
+    payload = {
+        "price_amount": float(round(usd_amount, 2)),
+        "price_currency": "usd",
+        "pay_currency": "usdttrc20",
+        "order_id": order_id,
+        "order_description": description[:255]
+    }
+    
+    headers = {
+        "x-api-key": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    url = "https://api.nowpayments.io/v1/invoice"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload, headers=headers) as response:
+            try:
+                data = await response.json()
+            except Exception:
+                text = await response.text()
+                logger.error(f"NowPayments API: невозможно разобрать ответ ({response.status}): {text}")
+                raise RuntimeError("NowPayments API вернул некорректный ответ")
+                
+            if response.status not in (200, 201) or not data or data.get('status') == 'error':
+                error_desc = data.get('message') or "Неизвестная ошибка"
+                logger.error(f"NowPayments API ошибка {response.status}: {error_desc}")
+                raise RuntimeError(f"NowPayments API ошибка: {error_desc}")
+                
+            invoice_id = data.get("id")
+            pay_url = data.get("invoice_url")
+            
+            if not invoice_id or not pay_url:
+                logger.error(f"NowPayments API не вернул id/invoice_url: {data}")
+                raise RuntimeError("NowPayments API не вернул данные платёжной ссылки")
+                
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pay_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            qr_image_data = bio.getvalue()
+            
+            logger.info(f"NowPayments счёт создан: invoice_id={invoice_id}, order_id={order_id}, amount_rub={amount_rub} RUB")
+            
+            return {
+                'nowpayments_invoice_id': str(invoice_id),
+                'qr_image_data': qr_image_data,
+                'qr_url': pay_url,
+                'status': 'pending'
+            }
+
+
+async def check_nowpayments_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус счёта в NowPayments.
+    """
+    api_key = get_nowpayments_api_key()
+    if not api_key:
+        raise ValueError("NowPayments: не настроен API key")
+        
+    url = f"https://api.nowpayments.io/v1/invoice/{invoice_id}"
+    headers = {
+        "x-api-key": api_key
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status != 200:
+                text = await response.text()
+                logger.error(f"NowPayments API status error {response.status}: {text}")
+                return 'pending'
+            try:
+                data = await response.json()
+            except Exception:
+                text = await response.text()
+                logger.error(f"NowPayments API status: cannot parse JSON: {text}")
+                return 'pending'
+                
+            status = data.get('invoice_status')
+            if not status:
+                status = data.get('status')
+                
+            if status in ('paid', 'finished', 'completed'):
+                return 'paid'
+            elif status in ('expired', 'failed'):
+                return 'failed'
+            return 'pending'
+
+
+# ── Robokassa ─────────────────────────────────────────────────────────────────
+
+async def create_robokassa_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Формирует платёжную ссылку для Robokassa.
+    """
+    login, password_1, _ = get_robokassa_credentials()
+    if not login or not password_1:
+        raise ValueError("Robokassa: не настроены login или password_1")
+        
+    inv_id = 0
+    amount_str = f"{amount_rub:.2f}"
+    
+    sign_str = f"{login}:{amount_str}:{inv_id}:{password_1}:shp_order_id={order_id}"
+    sign = hashlib.md5(sign_str.encode('utf-8')).hexdigest()
+    
+    from urllib.parse import quote_plus
+    pay_url = (
+        f"https://auth.robokassa.ru/Merchant/Index.aspx?"
+        f"MerchantLogin={login}&"
+        f"OutSum={amount_str}&"
+        f"InvId={inv_id}&"
+        f"Description={quote_plus(description)}&"
+        f"SignatureValue={sign}&"
+        f"shp_order_id={order_id}"
+    )
+    
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(pay_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    bio = io.BytesIO()
+    img.save(bio, format="PNG")
+    qr_image_data = bio.getvalue()
+    
+    logger.info(f"Robokassa ссылка создана: order_id={order_id}, amount={amount_rub} RUB")
+    
+    return {
+        'robokassa_invoice_id': order_id,
+        'qr_image_data': qr_image_data,
+        'qr_url': pay_url,
+        'status': 'pending'
+    }
+
+
+async def check_robokassa_payment_status(invoice_id: str) -> str:
+    """
+    Резервный метод проверки статуса Robokassa (возвращает pending и полагается на Webhook).
+    """
+    return 'pending'
+
+
+async def create_yoomoney_payment(
+    amount_rub: float,
+    order_id: str,
+    description: str,
+    bot_name: str
+) -> Dict[str, Any]:
+    """
+    Формирует ссылку для оплаты через ЮMoney (перевод на кошелек).
+    """
+    wallet = get_yoomoney_wallet()
+    if not wallet:
+        raise ValueError("ЮMoney: не настроен номер кошелька")
+        
+    from urllib.parse import urlencode
+    
+    success_url = f"https://t.me/{bot_name}?start=ym_success"
+    
+    params = {
+        "receiver": wallet.strip(),
+        "quickpay-form": "button",
+        "sum": f"{amount_rub:.2f}",
+        "targets": description,
+        "label": order_id,
+        "successURL": success_url
+    }
+    
+    pay_url = f"https://yoomoney.ru/quickpay/confirm.xml?{urlencode(params)}"
+    
+    # Генерируем QR-код
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(pay_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    bio = io.BytesIO()
+    img.save(bio, format="PNG")
+    qr_image_data = bio.getvalue()
+    
+    return {
+        'yoomoney_invoice_id': order_id,
+        'qr_image_data': qr_image_data,
+        'qr_url': pay_url,
+        'status': 'pending'
+    }
+
+
+async def check_yoomoney_payment_status(invoice_id: str) -> str:
+    """
+    Проверяет статус платежа ЮMoney.
+    """
+    order = find_order_by_order_id(invoice_id)
+    if order and order.get('status') == 'paid':
+        return 'succeeded'
+    return 'pending'
+
 

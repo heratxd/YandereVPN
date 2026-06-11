@@ -20,7 +20,7 @@ TELEGRAM_API_URL = "https://api.telegram.org"
 
 # Ссылка на GitHub репозиторий для автообновления
 # Формат: https://github.com/username/repo.git или git@github.com:username/repo.git
-GITHUB_REPO_URL = "https://github.com/heratxd/YadrenoVPN.git"  # Укажите URL вашего репозитория
+GITHUB_REPO_URL = "https://github.com/heratxd/YandereVPN.git"  # Укажите URL вашего репозитория
 
 # Client Configuration Defaults
 DEFAULT_LIMIT_IP = 1  # Ограничение кол-ва одновременных подключений (1 ключ = 1 устройство)
@@ -39,14 +39,14 @@ RETRY_CONFIG = {
 }
 
 # Тип базы данных ('sqlite' или 'postgres')
-DB_TYPE = "sqlite"
+DB_TYPE = "postgres"
 
 # Настройки подключения к PostgreSQL (используются если DB_TYPE = "postgres")
-PG_HOST = "localhost"
+PG_HOST = "db"
 PG_PORT = 5432
-PG_DB = "yadreno_vpn"
-PG_USER = "yadreno_user"
-PG_PASSWORD = "yadreno_pass"
+PG_DB = "yandere_vpn"
+PG_USER = "yandere_user"
+PG_PASSWORD = "yandere_pass"
 
 # Настройки Webhook-сервера для автоприёма платежей
 WEBHOOK_HOST = "0.0.0.0"

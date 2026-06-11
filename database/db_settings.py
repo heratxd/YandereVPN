@@ -53,7 +53,42 @@ __all__ = [
     'is_crystalpay_enabled',
     'is_crystalpay_configured',
     'get_crystalpay_credentials',
+    # Lava
+    'is_lava_enabled',
+    'is_lava_configured',
+    'get_lava_credentials',
+    # Freekassa
+    'is_freekassa_enabled',
+    'is_freekassa_configured',
+    'get_freekassa_credentials',
+    'get_freekassa_secret_2',
+    # Rukassa
+    'is_rukassa_enabled',
+    'is_rukassa_configured',
+    'get_rukassa_credentials',
+    # Payok
+    'is_payok_enabled',
+    'is_payok_configured',
+    'get_payok_credentials',
+    # NowPayments
+    'is_nowpayments_enabled',
+    'is_nowpayments_configured',
+    'get_nowpayments_api_key',
+    # Robokassa
+    'is_robokassa_enabled',
+    'is_robokassa_configured',
+    'get_robokassa_credentials',
+    # Domain & SSL Configuration
+    'is_domain_enabled',
+    'get_domain_name',
+    'get_bot_connection_mode',
+    'get_ssl_mode',
+    'is_yoomoney_enabled',
+    'is_yoomoney_configured',
+    'get_yoomoney_wallet',
+    'get_yoomoney_secret',
 ]
+
 
 DEFAULT_DISPLAY_TIMEZONE = 'Europe/Moscow'
 DISPLAY_TIMEZONE_SETTING = 'display_timezone'
@@ -368,7 +403,8 @@ def is_cryptobot_configured() -> bool:
     if not is_cryptobot_enabled():
         return False
     token = get_setting('cryptobot_api_token', '')
-    return bool(token and token.strip())
+    manual = get_setting('cryptobot_manual_address', '')
+    return bool((token and token.strip()) or (manual and manual.strip()))
 
 
 def get_cryptobot_token() -> str:
@@ -391,7 +427,8 @@ def is_xrocket_configured() -> bool:
     if not is_xrocket_enabled():
         return False
     token = get_setting('xrocket_api_key', '')
-    return bool(token and token.strip())
+    manual = get_setting('xrocket_manual_address', '')
+    return bool((token and token.strip()) or (manual and manual.strip()))
 
 
 def get_xrocket_token() -> str:
@@ -423,3 +460,200 @@ def get_crystalpay_credentials() -> tuple[str, str]:
     login = get_setting('crystalpay_login', '')
     secret = get_setting('crystalpay_secret', '')
     return login, secret
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Lava
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def is_lava_enabled() -> bool:
+    """Проверяет, включена ли оплата через Lava."""
+    return get_setting('lava_enabled', '0') == '1'
+
+
+def is_lava_configured() -> bool:
+    """Проверяет, настроена ли оплата через Lava полностью."""
+    if not is_lava_enabled():
+        return False
+    shop_id, api_key = get_lava_credentials()
+    return bool(shop_id and api_key)
+
+
+def get_lava_credentials() -> tuple[str, str]:
+    """Возвращает shop_id и api_key Lava."""
+    shop_id = get_setting('lava_shop_id', '') or ''
+    api_key = get_setting('lava_api_key', '') or ''
+    return shop_id, api_key
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Freekassa
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def is_freekassa_enabled() -> bool:
+    """Проверяет, включена ли оплата через Freekassa."""
+    return get_setting('freekassa_enabled', '0') == '1'
+
+
+def is_freekassa_configured() -> bool:
+    """Проверяет, настроена ли оплата через Freekassa полностью."""
+    if not is_freekassa_enabled():
+        return False
+    shop_id, api_key, secret_1 = get_freekassa_credentials()
+    secret_2 = get_freekassa_secret_2()
+    return bool(shop_id and api_key and secret_1 and secret_2)
+
+
+def get_freekassa_credentials() -> tuple[str, str, str]:
+    """Возвращает shop_id, api_key и secret_1 Freekassa."""
+    shop_id = get_setting('freekassa_shop_id', '') or ''
+    api_key = get_setting('freekassa_api_key', '') or ''
+    secret_1 = get_setting('freekassa_secret_1', '') or ''
+    return shop_id, api_key, secret_1
+
+
+def get_freekassa_secret_2() -> str:
+    """Возвращает Секретное слово 2 Freekassa."""
+    return get_setting('freekassa_secret_2', '') or ''
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Rukassa
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def is_rukassa_enabled() -> bool:
+    """Проверяет, включена ли оплата через Rukassa."""
+    return get_setting('rukassa_enabled', '0') == '1'
+
+
+def is_rukassa_configured() -> bool:
+    """Проверяет, настроена ли оплата через Rukassa полностью."""
+    if not is_rukassa_enabled():
+        return False
+    shop_id, token = get_rukassa_credentials()
+    return bool(shop_id and token)
+
+
+def get_rukassa_credentials() -> tuple[str, str]:
+    """Возвращает shop_id и token Rukassa."""
+    shop_id = get_setting('rukassa_shop_id', '') or ''
+    token = get_setting('rukassa_token', '') or ''
+    return shop_id, token
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Payok
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def is_payok_enabled() -> bool:
+    """Проверяет, включена ли оплата через Payok."""
+    return get_setting('payok_enabled', '0') == '1'
+
+
+def is_payok_configured() -> bool:
+    """Проверяет, настроена ли оплата через Payok полностью."""
+    if not is_payok_enabled():
+        return False
+    shop_id, api_key, secret_key = get_payok_credentials()
+    return bool(shop_id and api_key and secret_key)
+
+
+def get_payok_credentials() -> tuple[str, str, str]:
+    """Возвращает shop_id, api_key и secret_key Payok."""
+    shop_id = get_setting('payok_shop_id', '') or ''
+    api_key = get_setting('payok_api_key', '') or ''
+    secret_key = get_setting('payok_secret_key', '') or ''
+    return shop_id, api_key, secret_key
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NowPayments
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def is_nowpayments_enabled() -> bool:
+    """Проверяет, включена ли оплата через NowPayments."""
+    return get_setting('nowpayments_enabled', '0') == '1'
+
+
+def is_nowpayments_configured() -> bool:
+    """Проверяет, настроена ли оплата через NowPayments полностью."""
+    if not is_nowpayments_enabled():
+        return False
+    api_key = get_nowpayments_api_key()
+    return bool(api_key)
+
+
+def get_nowpayments_api_key() -> str:
+    """Возвращает API-ключ NowPayments."""
+    return get_setting('nowpayments_api_key', '') or ''
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Robokassa
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def is_robokassa_enabled() -> bool:
+    """Проверяет, включена ли оплата через Robokassa."""
+    return get_setting('robokassa_enabled', '0') == '1'
+
+
+def is_robokassa_configured() -> bool:
+    """Проверяет, настроена ли оплата через Robokassa полностью."""
+    if not is_robokassa_enabled():
+        return False
+    login, password_1, _ = get_robokassa_credentials()
+    return bool(login and password_1)
+
+
+def get_robokassa_credentials() -> tuple[str, str, str]:
+    """Возвращает login, password_1 и password_2 Robokassa."""
+    login = get_setting('robokassa_login', '') or ''
+    password_1 = get_setting('robokassa_password_1', '') or ''
+    password_2 = get_setting('robokassa_password_2', '') or ''
+    return login, password_1, password_2
+
+
+def is_domain_enabled() -> bool:
+    """Проверяет, включено ли использование собственного домена."""
+    return get_setting('domain_enabled', '0') == '1'
+
+
+def get_domain_name() -> str:
+    """Возвращает имя привязанного домена."""
+    return get_setting('domain_name', '') or ''
+
+
+def get_bot_connection_mode() -> str:
+    """Возвращает режим подключения к Telegram (polling или webhook)."""
+    return get_setting('bot_connection_mode', 'polling')
+
+
+def get_ssl_mode() -> str:
+    """Возвращает режим SSL (standalone - бот сам слушает 443 порт, proxy - через Nginx/Cloudflare)."""
+    return get_setting('ssl_mode', 'proxy')
+
+
+def is_yoomoney_enabled() -> bool:
+    """Проверяет, включена ли оплата через ЮMoney."""
+    return get_setting('yoomoney_enabled', '0') == '1'
+
+
+def is_yoomoney_configured() -> bool:
+    """Проверяет, настроена ли оплата через ЮMoney полностью."""
+    if not is_yoomoney_enabled():
+        return False
+    wallet = get_setting('yoomoney_wallet', '')
+    return bool(wallet and wallet.strip())
+
+
+def get_yoomoney_wallet() -> str:
+    """Возвращает номер кошелька ЮMoney."""
+    return get_setting('yoomoney_wallet', '') or ''
+
+
+def get_yoomoney_secret() -> str:
+    """Возвращает Секретный ключ (IPN) ЮMoney."""
+    return get_setting('yoomoney_secret', '') or ''
+
+
+

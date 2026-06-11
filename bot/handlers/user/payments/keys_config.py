@@ -46,10 +46,8 @@ async def start_new_key_config(message: Message, state: FSMContext, order_id: st
 async def process_new_key_server_selection(callback: CallbackQuery, state: FSMContext):
     """Выбор сервера для нового ключа."""
     from database.requests import get_server_by_id
-    from bot.services.vpn_api import get_client, VPNAPIError, is_subscription_mode
-    from bot.keyboards.user import new_key_inbound_list_kb
     from bot.states.user_states import NewKeyConfig
-    from bot.utils.key_pages import build_server_screen_data, keyboard_rows
+    from bot.utils.key_pages import keyboard_rows
     from bot.utils.page_renderer import render_page
     server_id = int(callback.data.split(':')[1])
     server = get_server_by_id(server_id)
@@ -58,11 +56,45 @@ async def process_new_key_server_selection(callback: CallbackQuery, state: FSMCo
         return
     await state.update_data(new_key_server_id=server_id)
 
-    # Subscription mode: выбор inbound не нужен — создаём ключ во всех inbound сразу
-    if is_subscription_mode():
+    # Переходим к выбору формата подключения (подписка или одиночный конфиг)
+    await state.set_state(NewKeyConfig.waiting_for_type)
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🔗 Подписка (все протоколы)", callback_data="new_key_type:sub"))
+    builder.row(InlineKeyboardButton(text="🔑 Один конфиг (выбор протокола)", callback_data="new_key_type:config"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_server_select"))
+    
+    await render_page(
+        callback,
+        page_key='new_key_type_select',
+        prepend_buttons=keyboard_rows(builder.as_markup()),
+    )
+    await callback.answer()
+
+
+@router.callback_query(NewKeyConfig.waiting_for_type, F.data.startswith('new_key_type:'))
+async def process_new_key_type_selection(callback: CallbackQuery, state: FSMContext):
+    """Выбор формата подключения для нового ключа."""
+    choice = callback.data.split(':')[1]
+    data = await state.get_data()
+    server_id = data.get('new_key_server_id')
+    
+    if choice == 'sub':
         await process_new_key_subscription_final(callback, state, server_id)
         return
-
+        
+    # Иначе choice == 'config'
+    from database.requests import get_server_by_id
+    from bot.services.vpn_api import get_client, VPNAPIError
+    from bot.keyboards.user import new_key_inbound_list_kb
+    from bot.states.user_states import NewKeyConfig
+    from bot.utils.key_pages import build_server_screen_data, keyboard_rows
+    from bot.utils.page_renderer import render_page
+    
+    server = get_server_by_id(server_id)
+    if not server:
+        await callback.answer('Сервер не найден', show_alert=True)
+        return
+        
     try:
         client = await get_client(server_id)
         inbounds = await client.get_inbounds()
@@ -259,10 +291,29 @@ async def process_new_key_final(callback: CallbackQuery, state: FSMContext, serv
 
 @router.callback_query(F.data == 'back_to_server_select')
 async def back_to_server_select(callback: CallbackQuery, state: FSMContext):
-    """Возврат к выбору сервера."""
+    """Возврат к предыдущему шагу (выбору типа или сервера)."""
+    current_state = await state.get_state()
+    from bot.states.user_states import NewKeyConfig
+    if current_state == NewKeyConfig.waiting_for_inbound:
+        # Возвращаемся к выбору формата (подписка vs один конфиг)
+        await state.set_state(NewKeyConfig.waiting_for_type)
+        from bot.utils.page_renderer import render_page
+        from bot.utils.key_pages import keyboard_rows
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(text="🔗 Подписка (все протоколы)", callback_data="new_key_type:sub"))
+        builder.row(InlineKeyboardButton(text="🔑 Один конфиг (выбор протокола)", callback_data="new_key_type:config"))
+        builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_server_select"))
+        await render_page(
+            callback,
+            page_key='new_key_type_select',
+            prepend_buttons=keyboard_rows(builder.as_markup()),
+        )
+        await callback.answer()
+        return
+
+    # Иначе возвращаемся на выбор сервера (из waiting_for_type)
     from database.requests import get_active_servers, find_order_by_order_id
     from bot.keyboards.user import new_key_server_list_kb
-    from bot.states.user_states import NewKeyConfig
     from bot.utils.key_pages import build_new_key_server_back_data, keyboard_rows
     from bot.utils.groups import get_servers_for_key
     from bot.utils.page_renderer import render_page
@@ -280,6 +331,7 @@ async def back_to_server_select(callback: CallbackQuery, state: FSMContext):
         text_replacements={'%данныеэкрана%': build_new_key_server_back_data()},
         prepend_buttons=keyboard_rows(new_key_server_list_kb(servers, include_home=False)),
     )
+    await callback.answer()
 
 
 # ============================================================================
@@ -294,7 +346,7 @@ async def process_wh_server_selection(callback: CallbackQuery):
     server_id = int(parts[2])
     
     from database.requests import find_order_by_order_id, get_server_by_id
-    from bot.services.vpn_api import is_subscription_mode, get_client, VPNAPIError
+    from bot.services.vpn_api import get_client, VPNAPIError
     
     order = find_order_by_order_id(order_id)
     if not order:
@@ -306,7 +358,53 @@ async def process_wh_server_selection(callback: CallbackQuery):
         await callback.answer('❌ Сервер не найден', show_alert=True)
         return
         
-    if is_subscription_mode():
+    from bot.utils.key_pages import keyboard_rows
+    from bot.utils.page_renderer import render_page
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(
+        text="🔗 Подписка (все протоколы)",
+        callback_data=f"wh_type:{order_id}:{server_id}:sub"
+    ))
+    builder.row(InlineKeyboardButton(
+        text="🔑 Один конфиг (выбор протокола)",
+        callback_data=f"wh_type:{order_id}:{server_id}:config"
+    ))
+    builder.row(InlineKeyboardButton(
+        text="⬅️ Назад",
+        callback_data=f"wh_back_to_server:{order_id}"
+    ))
+    
+    await render_page(
+        callback,
+        page_key='new_key_type_select',
+        prepend_buttons=keyboard_rows(builder.as_markup()),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('wh_type:'))
+async def process_wh_type_selection(callback: CallbackQuery):
+    """Выбор формата подключения для нового ключа, оплаченного через webhook (бесстейтовый)."""
+    parts = callback.data.split(':')
+    order_id = parts[1]
+    server_id = int(parts[2])
+    choice = parts[3]
+    
+    from database.requests import find_order_by_order_id, get_server_by_id
+    from bot.services.vpn_api import get_client, VPNAPIError
+    
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await callback.answer('❌ Заказ не найден', show_alert=True)
+        return
+        
+    server = get_server_by_id(server_id)
+    if not server:
+        await callback.answer('❌ Сервер не найден', show_alert=True)
+        return
+        
+    if choice == 'sub':
         await run_wh_subscription_final(callback, order, server_id)
         return
         
@@ -320,7 +418,6 @@ async def process_wh_server_selection(callback: CallbackQuery):
             await run_wh_final(callback, order, server_id, inbounds[0]['id'])
             return
             
-        from bot.keyboards.user import new_key_inbound_list_kb
         from bot.utils.key_pages import build_server_screen_data, keyboard_rows
         from bot.utils.page_renderer import render_page
         
@@ -330,6 +427,10 @@ async def process_wh_server_selection(callback: CallbackQuery):
                 text=f"⚙️ {inb['protocol']} ({inb['remark'] or inb['port']})",
                 callback_data=f"wh_inbound:{order_id}:{server_id}:{inb['id']}"
             ))
+        builder.row(InlineKeyboardButton(
+            text="⬅️ Назад",
+            callback_data=f"wh_server:{order_id}:{server_id}"
+        ))
         
         await render_page(
             callback,
@@ -339,6 +440,42 @@ async def process_wh_server_selection(callback: CallbackQuery):
         )
     except VPNAPIError as e:
         await callback.answer(f'❌ Ошибка подключения: {e}', show_alert=True)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('wh_back_to_server:'))
+async def process_wh_back_to_server(callback: CallbackQuery):
+    """Возврат к выбору сервера для нового ключа, оплаченного через webhook (бесстейтовый)."""
+    parts = callback.data.split(':')
+    order_id = parts[1]
+    
+    from database.requests import find_order_by_order_id, get_active_servers
+    from bot.utils.groups import get_servers_for_key
+    
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await callback.answer('❌ Заказ не найден', show_alert=True)
+        return
+        
+    tariff_id = order.get('tariff_id')
+    if tariff_id:
+        servers = get_servers_for_key(tariff_id)
+    else:
+        servers = get_active_servers()
+        
+    if not servers:
+        await callback.answer('❌ Нет доступных серверов', show_alert=True)
+        return
+        
+    builder = InlineKeyboardBuilder()
+    for srv in servers:
+        builder.row(InlineKeyboardButton(
+            text=srv['name'], 
+            callback_data=f"wh_server:{order_id}:{srv['id']}"
+        ))
+        
+    text = "Для настройки вашего нового VPN-подключения, пожалуйста, выберите сервер:"
+    await safe_edit_or_send(callback.message, text, reply_markup=builder.as_markup())
     await callback.answer()
 
 

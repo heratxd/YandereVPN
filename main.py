@@ -137,9 +137,6 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
-    # Удаляем старые обновления и запускаем polling
-    await bot.delete_webhook(drop_pending_updates=True)
-    
     # Запускаем планировщик ежедневных задач (статистика + бэкапы)
     daily_tasks = asyncio.create_task(run_daily_tasks(bot))
     # Запускаем планировщик проверки обновлений
@@ -147,16 +144,43 @@ async def main():
     # Запускаем планировщик синхронизации трафика (каждые 5 мин)
     traffic_tasks = asyncio.create_task(run_traffic_sync_scheduler(bot))
     
-    # Запускаем webhook-сервер приёма оплат
-    from bot.services.webhook_server import start_webhook_server
+    from database.requests import is_domain_enabled, get_domain_name, get_bot_connection_mode
+    domain_enabled = is_domain_enabled()
+    domain_name = get_domain_name()
+    conn_mode = get_bot_connection_mode()
+    use_webhook = domain_enabled and domain_name and conn_mode == 'webhook'
+
+    webhook_runner = None
     try:
-        webhook_runner = await start_webhook_server(bot)
-    except Exception as wh_err:
-        logger.error(f"Не удалось запустить webhook-сервер: {wh_err}")
-        webhook_runner = None
-    
-    try:
-        await dp.start_polling(bot)
+        if use_webhook:
+            # Устанавливаем вебхук в Telegram
+            webhook_url = f"https://{domain_name}/webhook/bot"
+            logger.info(f"📡 Устанавливаем вебхук Telegram на {webhook_url}...")
+            await bot.set_webhook(url=webhook_url, drop_pending_updates=True)
+            
+            # Запускаем webhook-сервер приёма оплат и обновлений бота
+            from bot.services.webhook_server import start_webhook_server
+            webhook_runner = await start_webhook_server(bot, dp=dp)
+            
+            # Ждем завершения
+            stop_event = asyncio.Event()
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                try:
+                    loop.add_signal_handler(sig, stop_event.set)
+                except NotImplementedError:
+                    pass
+            await stop_event.wait()
+        else:
+            # Удаляем старые обновления и запускаем polling
+            await bot.delete_webhook(drop_pending_updates=True)
+            
+            # Запускаем webhook-сервер приёма оплат (без dispatcher обновлений бота)
+            from bot.services.webhook_server import start_webhook_server
+            webhook_runner = await start_webhook_server(bot)
+            
+            # Запускаем polling
+            await dp.start_polling(bot)
     finally:
         daily_tasks.cancel()
         update_tasks.cancel()

@@ -30,6 +30,8 @@ async def _render_buy_page(target):
         is_yookassa_qr_configured, is_wata_configured, is_platega_configured,
         is_cardlink_configured,
         is_demo_payment_enabled,
+        is_lava_configured, is_freekassa_configured, is_rukassa_configured,
+        is_payok_configured, is_nowpayments_configured, is_robokassa_configured,
         get_user_internal_id, create_pending_order,
     )
     from bot.utils.page_renderer import render_page
@@ -48,9 +50,19 @@ async def _render_buy_page(target):
     platega_enabled = is_platega_configured()
     cardlink_enabled = is_cardlink_configured()
     demo_enabled = is_demo_payment_enabled()
+    lava_enabled = is_lava_configured()
+    freekassa_enabled = is_freekassa_configured()
+    rukassa_enabled = is_rukassa_configured()
+    payok_enabled = is_payok_configured()
+    nowpayments_enabled = is_nowpayments_configured()
+    robokassa_enabled = is_robokassa_configured()
 
     # Проверка: хотя бы один способ оплаты настроен
-    if not crypto_configured and not stars_enabled and not cards_enabled and not yookassa_qr and not wata_enabled and not platega_enabled and not cardlink_enabled and not demo_enabled:
+    if (not crypto_configured and not stars_enabled and not cards_enabled 
+            and not yookassa_qr and not wata_enabled and not platega_enabled 
+            and not cardlink_enabled and not demo_enabled and not lava_enabled 
+            and not freekassa_enabled and not rukassa_enabled and not payok_enabled 
+            and not nowpayments_enabled and not robokassa_enabled):
         msg = target.message if isinstance(target, CallbackQuery) else target
         await safe_edit_or_send(
             msg,

@@ -437,14 +437,287 @@ async def check_qr_payment_flow(
             payment_type=payment_type,
             referral_amount=referral_amount
         )
-    elif status == 'canceled':
-        await safe_edit_or_send(
-            message,
-            '❌ <b>Платёж отменён</b>\n\nПохоже, платёж был отменён.\nПопробуйте снова выбрать тариф.',
-            reply_markup=home_only_kb(), force_new=True
-        )
     else:
         pending_text = '⏳ <b>Платёж ещё не поступил</b>\n\nОплатите по ссылке и нажмите «✅ Я оплатил» снова.'
         if pending_hint:
             pending_text += f'\n\n<i>{pending_hint}</i>'
         await safe_edit_or_send(message, pending_text, force_new=True)
+
+
+# ============================================================================
+# РУЧНОЙ РЕЖИМ ОПЛАТЫ (CryptoBot / xRocket)
+# ============================================================================
+
+async def create_manual_payment_flow(
+    callback: CallbackQuery,
+    tariff: dict,
+    price_usd: float,
+    payment_type: str,
+    manual_address: str,
+    back_callback: str,
+    key: dict = None,
+    vpn_key_id: int = None,
+) -> None:
+    from database.requests import get_user_internal_id, create_pending_order
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    # 1. Валидация пользователя
+    user_id = get_user_internal_id(callback.from_user.id)
+    if not user_id:
+        await callback.answer('❌ Пользователь не найден', show_alert=True)
+        return
+
+    # 2. Создание ордера
+    (_, order_id) = create_pending_order(
+        user_id=user_id, tariff_id=tariff['id'],
+        payment_type=payment_type, vpn_key_id=vpn_key_id
+    )
+
+    # 3. Формирование текста
+    title = "🤖 <b>Ручная оплата через CryptoBot (USDT)</b>" if payment_type == 'cryptobot' else "🚀 <b>Ручная оплата через xRocket (USDT)</b>"
+    provider_bot = "@CryptoBot" if payment_type == 'cryptobot' else "@xRocket"
+    
+    lines = [
+        f"{title}\n",
+        f"💳 <b>Тариф:</b> {escape_html(tariff['name'])}",
+        f"💰 <b>Сумма:</b> ${price_usd:g}"
+    ]
+    if key:
+        lines.append(f"🔑 <b>Ключ:</b> {escape_html(key['display_name'])}")
+        lines.append(f"⏳ <b>Продление:</b> +{tariff['duration_days']} дней")
+    else:
+        lines.append(f"⏳ <b>Срок:</b> {tariff['duration_days']} дней")
+        
+    lines.extend([
+        f"\nДля оплаты переведите указанную сумму в {provider_bot} на никнейм/кошелёк:",
+        f"👉 <code>{escape_html(manual_address)}</code>\n",
+        "<i>После оплаты нажмите кнопку «📤 Отправить чек» ниже и пришлите скриншот/фото чека об оплате.</i>"
+    ])
+    text = "\n".join(lines)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📤 Отправить чек", callback_data=f"manual_pay_send_receipt:{payment_type}:{order_id}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data=back_callback))
+
+    await safe_edit_or_send(
+        callback.message, text,
+        reply_markup=builder.as_markup(),
+        force_new=True
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('manual_pay_send_receipt:'))
+async def manual_pay_send_receipt_click(callback: CallbackQuery, state: FSMContext):
+    from bot.states.user_states import ManualPaymentStates
+    parts = callback.data.split(':')
+    payment_type = parts[1]
+    order_id = parts[2]
+    
+    await state.set_state(ManualPaymentStates.waiting_for_receipt)
+    await state.update_data(manual_pay_type=payment_type, manual_order_id=order_id)
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="❌ Отменить", callback_data="buy_key"))
+    
+    await safe_edit_or_send(
+        callback.message,
+        "📷 <b>Отправка подтверждения оплаты</b>\n\n"
+        "Пожалуйста, отправьте скриншот/фотографию чека об оплате или квитанции.\n\n"
+        "<i>Вы можете отправить фото или документ.</i>",
+        reply_markup=builder.as_markup(),
+        force_new=True
+    )
+    await callback.answer()
+
+
+@router.message(ManualPaymentStates.waiting_for_receipt, F.photo | F.document)
+async def manual_receipt_received(message: Message, state: FSMContext):
+    from database.requests import find_order_by_order_id, get_tariff_by_id
+    from bot.keyboards.admin import home_only_kb
+    
+    state_data = await state.get_data()
+    payment_type = state_data.get('manual_pay_type')
+    order_id = state_data.get('manual_order_id')
+    
+    if not payment_type or not order_id:
+        await message.answer("❌ Произошла ошибка. Пожалуйста, начните процесс оплаты заново через /buy.")
+        await state.clear()
+        return
+        
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await message.answer("❌ Заказ не найден.", reply_markup=home_only_kb())
+        await state.clear()
+        return
+        
+    tariff = get_tariff_by_id(order.get('tariff_id'))
+    if not tariff:
+        await message.answer("❌ Тариф не найден.", reply_markup=home_only_kb())
+        await state.clear()
+        return
+
+    # Извлечение file_id
+    file_id = None
+    if message.photo:
+        file_id = message.photo[-1].file_id
+    elif message.document:
+        file_id = message.document.file_id
+        
+    await state.clear()
+    
+    await message.answer(
+        "⏳ <b>Ваш чек успешно отправлен на проверку администратору!</b>\n\n"
+        "Мы проверим его в ближайшее время и активируем подписку. Обычно это занимает от 5 до 15 минут.",
+        reply_markup=home_only_kb()
+    )
+    
+    price_val = (tariff.get('price_cents') or 0) / 100
+    price_str = f"${price_val:g}"
+    
+    username_str = f"@{message.from_user.username}" if message.from_user.username else f"ID: {message.from_user.id}"
+    admin_text = (
+        "🔔 <b>Новый запрос на ручную оплату!</b>\n\n"
+        f"👤 <b>Пользователь:</b> {username_str} (ID: <code>{message.from_user.id}</code>)\n"
+        f"🏷 <b>Провайдер:</b> {payment_type.upper()} (Manual)\n"
+        f"📦 <b>Тариф:</b> {escape_html(tariff['name'])} ({tariff['duration_days']} дн.)\n"
+        f"💰 <b>Сумма к оплате:</b> {price_str}\n"
+        f"📝 <b>Ордер:</b> <code>{order_id}</code>\n\n"
+        "Пожалуйста, проверьте поступление средств и примите решение:"
+    )
+    
+    admin_builder = InlineKeyboardBuilder()
+    admin_builder.row(
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"admin_manual_approve:{order_id}"),
+        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"admin_manual_reject:{order_id}")
+    )
+    
+    for admin_id in ADMIN_IDS:
+        try:
+            if message.photo:
+                await message.bot.send_photo(
+                    chat_id=admin_id,
+                    photo=file_id,
+                    caption=admin_text,
+                    reply_markup=admin_builder.as_markup()
+                )
+            else:
+                await message.bot.send_document(
+                    chat_id=admin_id,
+                    document=file_id,
+                    caption=admin_text,
+                    reply_markup=admin_builder.as_markup()
+                )
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
+
+
+@router.message(ManualPaymentStates.waiting_for_receipt)
+async def manual_receipt_invalid_format(message: Message):
+    await message.answer(
+        "⚠️ <b>Пожалуйста, отправьте именно изображение чека (фотографию) или документ (PDF/картинку).</b>\n\n"
+        "Если хотите отменить, нажмите кнопку «❌ Отменить» под предыдущим сообщением."
+    )
+
+
+@router.callback_query(F.data.startswith('admin_manual_approve:'))
+async def admin_manual_approve_handler(callback: CallbackQuery, state: FSMContext):
+    from bot.utils.admin import is_admin
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    order_id = callback.data.split(':')[1]
+    
+    from database.requests import find_order_by_order_id, is_order_already_paid, update_payment_type, get_user_by_id
+    from bot.services.billing import complete_payment_flow, get_tariff_by_id
+    
+    if is_order_already_paid(order_id):
+        await callback.answer("⚠️ Этот заказ уже оплачен и обработан.", show_alert=True)
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return
+        
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await callback.answer("❌ Заказ не найден.", show_alert=True)
+        return
+        
+    tariff = get_tariff_by_id(order.get('tariff_id'))
+    referral_amount = tariff.get('price_cents', 0) if tariff else 0
+    
+    update_payment_type(order_id, order['payment_type'])
+    
+    await callback.answer("Платёж подтверждён!", show_alert=True)
+    try:
+        await callback.message.edit_caption(
+            caption=callback.message.caption + "\n\n🟢 <b>Оплата подтверждена администратором!</b>",
+            reply_markup=None
+        )
+    except Exception:
+        pass
+        
+    user = get_user_by_id(order['user_id'])
+    if not user:
+        logger.error(f"User not found for ID: {order['user_id']}")
+        return
+    user_telegram_id = user['telegram_id']
+    
+    class FakeUserMessage:
+        def __init__(self, bot, chat_id):
+            self.bot = bot
+            self.chat = type('FakeChat', (), {'id': chat_id})()
+            self.from_user = type('FakeUser', (), {'id': chat_id})()
+        async def answer(self, text, *args, **kwargs):
+            return await self.bot.send_message(chat_id=self.chat.id, text=text, *args, **kwargs)
+            
+    fake_msg = FakeUserMessage(callback.bot, user_telegram_id)
+    
+    await complete_payment_flow(
+        order_id=order_id,
+        message=fake_msg,
+        state=state,
+        telegram_id=user_telegram_id,
+        payment_type=order['payment_type'],
+        referral_amount=referral_amount
+    )
+
+
+@router.callback_query(F.data.startswith('admin_manual_reject:'))
+async def admin_manual_reject_handler(callback: CallbackQuery):
+    from bot.utils.admin import is_admin
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+        
+    order_id = callback.data.split(':')[1]
+    
+    from database.requests import find_order_by_order_id, cancel_order, get_user_by_id
+    order = find_order_by_order_id(order_id)
+    if not order:
+        await callback.answer("❌ Заказ не найден.", show_alert=True)
+        return
+        
+    cancel_order(order_id)
+    
+    await callback.answer("Платёж отклонён.", show_alert=True)
+    try:
+        await callback.message.edit_caption(
+            caption=callback.message.caption + "\n\n❌ <b>Оплата отклонена администратором.</b>",
+            reply_markup=None
+        )
+    except Exception:
+        pass
+        
+    user = get_user_by_id(order['user_id'])
+    if user:
+        try:
+            await callback.bot.send_message(
+                chat_id=user['telegram_id'],
+                text="❌ <b>Ваш платёж не был подтверждён администратором.</b>\n\n"
+                     "Если вы считаете, что это ошибка, пожалуйста, свяжитесь с поддержкой."
+            )
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление об отказе пользователю {user['telegram_id']}: {e}")

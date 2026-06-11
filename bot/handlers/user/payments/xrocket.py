@@ -54,7 +54,7 @@ async def pay_xrocket_select_tariff(callback: CallbackQuery):
 @router.callback_query(F.data.startswith('xrocket_pay:'))
 async def xrocket_pay_create(callback: CallbackQuery):
     """Создаёт счёт xRocket для нового ключа и отправляет QR-фото."""
-    from database.requests import get_tariff_by_id, save_xrocket_invoice_id
+    from database.requests import get_tariff_by_id, save_xrocket_invoice_id, get_setting, get_xrocket_token
     from bot.services.billing import create_xrocket_payment
 
     tariff_id = int(callback.data.split(':')[1])
@@ -65,6 +65,17 @@ async def xrocket_pay_create(callback: CallbackQuery):
     price_usd = float(tariff.get('price_cents') or 0) / 100
     if price_usd <= 0:
         await callback.answer('❌ Некорректная цена тарифа', show_alert=True)
+        return
+
+    token = get_xrocket_token()
+    manual = get_setting('xrocket_manual_address', '')
+    if not token and manual:
+        from bot.handlers.user.payments.base import create_manual_payment_flow
+        await create_manual_payment_flow(
+            callback=callback, tariff=tariff, price_usd=price_usd,
+            payment_type=_XR_TYPE, manual_address=manual,
+            back_callback='pay_xrocket'
+        )
         return
 
     await create_qr_payment_flow(
@@ -110,7 +121,7 @@ async def renew_xrocket_select_tariff(callback: CallbackQuery):
 @router.callback_query(F.data.startswith('renew_pay_xrocket:'))
 async def renew_xrocket_create(callback: CallbackQuery):
     """Создаёт счёт xRocket для продления ключа."""
-    from database.requests import get_tariff_by_id, get_key_details_for_user, save_xrocket_invoice_id
+    from database.requests import get_tariff_by_id, get_key_details_for_user, save_xrocket_invoice_id, get_setting, get_xrocket_token
     from bot.services.billing import create_xrocket_payment
 
     parts = callback.data.split(':')
@@ -124,6 +135,18 @@ async def renew_xrocket_create(callback: CallbackQuery):
     price_usd = float(tariff.get('price_cents') or 0) / 100
     if price_usd <= 0:
         await callback.answer('❌ Некорректная цена тарифа', show_alert=True)
+        return
+
+    token = get_xrocket_token()
+    manual = get_setting('xrocket_manual_address', '')
+    if not token and manual:
+        from bot.handlers.user.payments.base import create_manual_payment_flow
+        await create_manual_payment_flow(
+            callback=callback, tariff=tariff, price_usd=price_usd,
+            payment_type=_XR_TYPE, manual_address=manual,
+            back_callback=f'renew_xrocket_tariff:{key_id}',
+            key=key, vpn_key_id=key_id
+        )
         return
 
     await create_qr_payment_flow(

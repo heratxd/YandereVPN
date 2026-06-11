@@ -54,7 +54,34 @@ __all__ = [
     'find_latest_pending_cryptobot_order_for_user',
     'find_latest_pending_xrocket_order_for_user',
     'find_latest_pending_crystalpay_order_for_user',
+    # Lava
+    'save_lava_invoice_id',
+    'find_order_by_lava_id',
+    'find_latest_pending_lava_order_for_user',
+    # Freekassa
+    'save_freekassa_invoice_id',
+    'find_order_by_freekassa_id',
+    'find_latest_pending_freekassa_order_for_user',
+    # Rukassa
+    'save_rukassa_invoice_id',
+    'find_order_by_rukassa_id',
+    'find_latest_pending_rukassa_order_for_user',
+    # Payok
+    'save_payok_invoice_id',
+    'find_order_by_payok_id',
+    'find_latest_pending_payok_order_for_user',
+    # NowPayments
+    'save_nowpayments_invoice_id',
+    'find_order_by_nowpayments_id',
+    'find_latest_pending_nowpayments_order_for_user',
+    # Robokassa
+    'save_robokassa_invoice_id',
+    'find_order_by_robokassa_id',
+    'find_latest_pending_robokassa_order_for_user',
+    'find_order_by_yoomoney_id',
+    'save_yoomoney_payment_id',
 ]
+
 
 def save_yookassa_payment_id(order_id: str, yookassa_payment_id: str) -> bool:
     """
@@ -375,6 +402,287 @@ def find_latest_pending_crystalpay_order_for_user(user_id: int) -> Optional[Dict
         """, (user_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
+
+
+# ── Lava ──────────────────────────────────────────────────────────────────────
+
+def save_lava_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """Сохраняет ID инвойса Lava в запись ордера."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET lava_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён lava_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_lava_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID инвойса Lava."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE lava_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_lava_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """Находит последний pending-ордер типа 'lava' для пользователя."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'lava'
+              AND status = 'pending'
+              AND lava_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+# ── Freekassa ──────────────────────────────────────────────────────────────────
+
+def save_freekassa_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """Сохраняет ID инвойса Freekassa в запись ордера."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET freekassa_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён freekassa_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_freekassa_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID инвойса Freekassa."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE freekassa_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_freekassa_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """Находит последний pending-ордер типа 'freekassa' для пользователя."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'freekassa'
+              AND status = 'pending'
+              AND freekassa_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+# ── Rukassa ────────────────────────────────────────────────────────────────────
+
+def save_rukassa_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """Сохраняет ID инвойса Rukassa в запись ордера."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET rukassa_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён rukassa_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_rukassa_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID инвойса Rukassa."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE rukassa_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_rukassa_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """Находит последний pending-ордер типа 'rukassa' для пользователя."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'rukassa'
+              AND status = 'pending'
+              AND rukassa_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+# ── Payok ──────────────────────────────────────────────────────────────────────
+
+def save_payok_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """Сохраняет ID инвойса Payok в запись ордера."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET payok_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён payok_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_payok_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID инвойса Payok."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE payok_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_payok_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """Находит последний pending-ордер типа 'payok' для пользователя."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'payok'
+              AND status = 'pending'
+              AND payok_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+# ── NowPayments ────────────────────────────────────────────────────────────────
+
+def save_nowpayments_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """Сохраняет ID инвойса NowPayments в запись ордера."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET nowpayments_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён nowpayments_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_nowpayments_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID инвойса NowPayments."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE nowpayments_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_nowpayments_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """Находит последний pending-ордер типа 'nowpayments' для пользователя."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'nowpayments'
+              AND status = 'pending'
+              AND nowpayments_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+# ── Robokassa ──────────────────────────────────────────────────────────────────
+
+def save_robokassa_invoice_id(order_id: str, invoice_id: str) -> bool:
+    """Сохраняет ID инвойса Robokassa в запись ордера."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET robokassa_invoice_id = ? WHERE order_id = ?",
+            (invoice_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён robokassa_invoice_id={invoice_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_robokassa_id(invoice_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID инвойса Robokassa."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE robokassa_invoice_id = ?",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_latest_pending_robokassa_order_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """Находит последний pending-ордер типа 'robokassa' для пользователя."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM payments
+            WHERE user_id = ?
+              AND payment_type = 'robokassa'
+              AND status = 'pending'
+              AND robokassa_invoice_id IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def save_yoomoney_payment_id(order_id: str, payment_id: str) -> bool:
+    """
+    Сохраняет ID инвойса/операции ЮMoney в запись ордера.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE payments SET yoomoney_payment_id = ? WHERE order_id = ?",
+            (payment_id, order_id)
+        )
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Сохранён yoomoney_payment_id={payment_id} для order_id={order_id}")
+        return success
+
+
+def find_order_by_yoomoney_id(payment_id: str) -> Optional[Dict[str, Any]]:
+    """Находит ордер по ID платежа/операции ЮMoney."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM payments WHERE yoomoney_payment_id = ?",
+            (payment_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+
 
 
 def get_user_payments_stats(user_id: int) -> Dict[str, Any]:
@@ -732,6 +1040,27 @@ def complete_order(order_id: str) -> bool:
         success = cursor.rowcount > 0
         if success:
             logger.info(f"Order {order_id} завершён (paid)")
+        return success
+
+def cancel_order(order_id: str) -> bool:
+    """
+    Устанавливает статус ордера в 'canceled'.
+    
+    Args:
+        order_id: ID ордера
+        
+    Returns:
+        True если успешно
+    """
+    with get_db() as conn:
+        cursor = conn.execute("""
+            UPDATE payments 
+            SET status = 'canceled'
+            WHERE order_id = ? AND status = 'pending'
+        """, (order_id,))
+        success = cursor.rowcount > 0
+        if success:
+            logger.info(f"Order {order_id} отменён (canceled)")
         return success
 
 def update_order_tariff(order_id: str, tariff_id: int, payment_type: Optional[str] = None) -> bool:

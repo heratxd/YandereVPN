@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 
 from .admin_misc import back_button, home_button, cancel_button
 
-def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: bool, qr_enabled: bool=False, monthly_reset_enabled: bool=False, demo_enabled: bool=False, wata_enabled: bool=False, platega_enabled: bool=False, cardlink_enabled: bool=False, cryptobot_enabled: bool=False, xrocket_enabled: bool=False, crystalpay_enabled: bool=False) -> InlineKeyboardMarkup:
+def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: bool, qr_enabled: bool=False, monthly_reset_enabled: bool=False, demo_enabled: bool=False, wata_enabled: bool=False, platega_enabled: bool=False, cardlink_enabled: bool=False, cryptobot_enabled: bool=False, xrocket_enabled: bool=False, crystalpay_enabled: bool=False, lava_enabled: bool=False, freekassa_enabled: bool=False, rukassa_enabled: bool=False, payok_enabled: bool=False, nowpayments_enabled: bool=False, robokassa_enabled: bool=False, yoomoney_enabled: bool=False) -> InlineKeyboardMarkup:
     """
     Главное меню раздела оплат.
     """
@@ -29,6 +29,20 @@ def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: b
     builder.row(InlineKeyboardButton(text=f'🚀 xRocket (USDT): {xrocket_status}', callback_data='admin_payments_xrocket'))
     crystalpay_status = '✅' if crystalpay_enabled else '❌'
     builder.row(InlineKeyboardButton(text=f'💎 CrystalPay (РФ/Крипта): {crystalpay_status}', callback_data='admin_payments_crystalpay'))
+    lava_status = '✅' if lava_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🌋 Lava: {lava_status}', callback_data='admin_payments_lava'))
+    freekassa_status = '✅' if freekassa_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'💸 Freekassa: {freekassa_status}', callback_data='admin_payments_freekassa'))
+    rukassa_status = '✅' if rukassa_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🇷🇺 RuKassa: {rukassa_status}', callback_data='admin_payments_rukassa'))
+    payok_status = '✅' if payok_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'⚡ Payok: {payok_status}', callback_data='admin_payments_payok'))
+    nowpayments_status = '✅' if nowpayments_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🪙 NowPayments: {nowpayments_status}', callback_data='admin_payments_nowpayments'))
+    robokassa_status = '✅' if robokassa_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🔴 Robokassa: {robokassa_status}', callback_data='admin_payments_robokassa'))
+    yoomoney_status = '✅' if yoomoney_enabled else '❌'
+    builder.row(InlineKeyboardButton(text=f'🟣 ЮMoney (Кошелек): {yoomoney_status}', callback_data='admin_payments_yoomoney'))
     demo_status = '✅' if demo_enabled else '❌'
     builder.row(InlineKeyboardButton(text=f'💳 Демо оплата (РФ): {demo_status}', callback_data='admin_payments_toggle_demo'))
     reset_status = '✅' if monthly_reset_enabled else '❌'
@@ -36,8 +50,46 @@ def payments_menu_kb(stars_enabled: bool, crypto_enabled: bool, cards_enabled: b
     builder.row(InlineKeyboardButton(text='📂 Группы тарифов', callback_data='admin_groups'))
     builder.row(InlineKeyboardButton(text='📋 Тарифы', callback_data='admin_tariffs'))
     builder.row(InlineKeyboardButton(text='🎁 Пробная подписка', callback_data='admin_trial'))
+    builder.row(InlineKeyboardButton(text='🌐 Настройки домена и SSL', callback_data='admin_domain_settings'))
     builder.row(back_button('admin_panel'), home_button())
     return builder.as_markup()
+
+
+def yoomoney_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """
+    Меню управления оплатой через ЮMoney.
+    """
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_yoomoney_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить номер кошелька', callback_data='admin_yoomoney_mgmt_edit_wallet'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Секретный ключ (IPN)', callback_data='admin_yoomoney_mgmt_edit_secret'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def domain_settings_kb(is_domain_enabled: bool, connection_mode: str, ssl_mode: str) -> InlineKeyboardMarkup:
+    """
+    Клавиатура настроек домена и SSL.
+    """
+    builder = InlineKeyboardBuilder()
+    
+    domain_toggle_text = '🔴 Выключить домен' if is_domain_enabled else '🟢 Включить домен'
+    builder.row(InlineKeyboardButton(text=domain_toggle_text, callback_data='admin_domain_toggle'))
+    
+    builder.row(InlineKeyboardButton(text='📝 Указать доменное имя', callback_data='admin_domain_edit_name'))
+    
+    mode_text = '🔌 Режим: Webhook 📡' if connection_mode == 'webhook' else '🔌 Режим: Polling 📥'
+    builder.row(InlineKeyboardButton(text=mode_text, callback_data='admin_domain_toggle_mode'))
+    
+    ssl_text = '🔒 SSL: Standalone 🛡️' if ssl_mode == 'standalone' else '🔒 SSL: Proxy (Nginx/Cloudflare) 🎛️'
+    builder.row(InlineKeyboardButton(text=ssl_text, callback_data='admin_domain_toggle_ssl'))
+    
+    builder.row(InlineKeyboardButton(text='🔑 Получить SSL-сертификат Let\'s Encrypt', callback_data='admin_domain_run_certbot'))
+    
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
 
 
 def cryptobot_management_kb(is_enabled: bool, is_sandbox: bool) -> InlineKeyboardMarkup:
@@ -50,6 +102,7 @@ def cryptobot_management_kb(is_enabled: bool, is_sandbox: bool) -> InlineKeyboar
     sandbox_text = 'Выйти из Sandbox ⚪' if is_sandbox else 'Войти в Sandbox 🧪'
     builder.row(InlineKeyboardButton(text=sandbox_text, callback_data='admin_cryptobot_mgmt_toggle_sandbox'))
     builder.row(InlineKeyboardButton(text='🔑 Изменить API-токен', callback_data='admin_cryptobot_mgmt_edit_token'))
+    builder.row(InlineKeyboardButton(text='📝 Изменить реквизиты (Ручной режим)', callback_data='admin_cryptobot_mgmt_edit_manual'))
     builder.row(back_button('admin_payments'), home_button())
     return builder.as_markup()
 
@@ -62,8 +115,9 @@ def xrocket_management_kb(is_enabled: bool, is_sandbox: bool) -> InlineKeyboardM
     toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
     builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_xrocket_mgmt_toggle'))
     sandbox_text = 'Выйти из Sandbox ⚪' if is_sandbox else 'Войти in Sandbox 🧪'
-    builder.row(InlineKeyboardButton(text=sandbox_text, callback_data='admin_xrocket_mgmt_toggle_sandbox'))
+    builder.row(sandbox_text_btn := InlineKeyboardButton(text=sandbox_text, callback_data='admin_xrocket_mgmt_toggle_sandbox'))
     builder.row(InlineKeyboardButton(text='🔑 Изменить API-токен', callback_data='admin_xrocket_mgmt_edit_token'))
+    builder.row(InlineKeyboardButton(text='📝 Изменить реквизиты (Ручной режим)', callback_data='admin_xrocket_mgmt_edit_manual'))
     builder.row(back_button('admin_payments'), home_button())
     return builder.as_markup()
 
@@ -193,5 +247,76 @@ def crypto_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
     builder.row(InlineKeyboardButton(text=status_text, callback_data='admin_crypto_mgmt_toggle'))
     builder.row(InlineKeyboardButton(text='🔗 Изменить ссылку на товар', callback_data='admin_crypto_mgmt_edit_url'))
     builder.row(InlineKeyboardButton(text='🔐 Изменить секретный ключ', callback_data='admin_crypto_mgmt_edit_secret'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def lava_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """Меню управления Lava."""
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_lava_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить Shop ID', callback_data='admin_lava_mgmt_edit_shop_id'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить API-токен', callback_data='admin_lava_mgmt_edit_api_key'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def freekassa_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """Меню управления Freekassa."""
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_freekassa_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить Shop ID', callback_data='admin_freekassa_mgmt_edit_shop_id'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить API-ключ', callback_data='admin_freekassa_mgmt_edit_api_key'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Секретное слово 1', callback_data='admin_freekassa_mgmt_edit_secret_1'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Секретное слово 2', callback_data='admin_freekassa_mgmt_edit_secret_2'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def rukassa_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """Меню управления Rukassa."""
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_rukassa_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить Shop ID', callback_data='admin_rukassa_mgmt_edit_shop_id'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить Токен', callback_data='admin_rukassa_mgmt_edit_token'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def payok_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """Меню управления Payok."""
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_payok_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить Shop ID', callback_data='admin_payok_mgmt_edit_shop_id'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить API-ключ', callback_data='admin_payok_mgmt_edit_api_key'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Секретный ключ', callback_data='admin_payok_mgmt_edit_secret_key'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить API ID', callback_data='admin_payok_mgmt_edit_api_id'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def nowpayments_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """Меню управления NowPayments."""
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_nowpayments_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🔑 Изменить API-ключ', callback_data='admin_nowpayments_mgmt_edit_api_key'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить IPN Secret', callback_data='admin_nowpayments_mgmt_edit_ipn_secret'))
+    builder.row(back_button('admin_payments'), home_button())
+    return builder.as_markup()
+
+
+def robokassa_management_kb(is_enabled: bool) -> InlineKeyboardMarkup:
+    """Меню управления Robokassa."""
+    builder = InlineKeyboardBuilder()
+    toggle_text = 'Выключить 🔴' if is_enabled else 'Включить 🟢'
+    builder.row(InlineKeyboardButton(text=toggle_text, callback_data='admin_robokassa_mgmt_toggle'))
+    builder.row(InlineKeyboardButton(text='🆔 Изменить Login', callback_data='admin_robokassa_mgmt_edit_login'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Пароль 1', callback_data='admin_robokassa_mgmt_edit_password_1'))
+    builder.row(InlineKeyboardButton(text='🔐 Изменить Пароль 2', callback_data='admin_robokassa_mgmt_edit_password_2'))
     builder.row(back_button('admin_payments'), home_button())
     return builder.as_markup()

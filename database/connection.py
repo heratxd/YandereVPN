@@ -255,19 +255,39 @@ def get_connection():
         DB_TYPE = "sqlite"
 
     if DB_TYPE == "postgres":
-        try:
-            import psycopg2
-            raw_conn = psycopg2.connect(
-                host=getattr(config, "PG_HOST", "localhost"),
-                port=getattr(config, "PG_PORT", 5432),
-                database=getattr(config, "PG_DB", "yadreno_vpn"),
-                user=getattr(config, "PG_USER", "yadreno_user"),
-                password=getattr(config, "PG_PASSWORD", "yadreno_pass"),
-                connect_timeout=5
-            )
-            return PostgresConnection(raw_conn)
-        except Exception as e:
-            logger.error(f"Ошибка подключения к PostgreSQL: {e}. Откат на SQLite.")
+        import time
+        import os
+        max_attempts = 5
+        delay = 2
+        last_error = None
+        
+        pg_host = getattr(config, "PG_HOST", "localhost")
+        if pg_host == "db" and not os.path.exists("/.dockerenv"):
+            pg_host = "localhost"
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                import psycopg2
+                raw_conn = psycopg2.connect(
+                    host=pg_host,
+                    port=getattr(config, "PG_PORT", 5432),
+                    database=getattr(config, "PG_DB", "yandere_vpn"),
+                    user=getattr(config, "PG_USER", "yandere_user"),
+                    password=getattr(config, "PG_PASSWORD", "yandere_pass"),
+                    connect_timeout=5
+                )
+                return PostgresConnection(raw_conn)
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"Попытка подключения к PostgreSQL {attempt}/{max_attempts} не удалась: {e}. "
+                    f"Ожидание {delay} сек..."
+                )
+                if attempt < max_attempts:
+                    time.sleep(delay)
+        
+        logger.error(f"Не удалось подключиться к PostgreSQL после {max_attempts} попыток: {last_error}")
+        raise last_error
 
     # SQLite
     conn = sqlite3.connect(DB_PATH)

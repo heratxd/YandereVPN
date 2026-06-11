@@ -34,6 +34,7 @@ class AdminStates(StatesGroup):
     # ========== Раздел «Оплаты» ==========
     payments_menu = State()          # Главный экран оплат
     cards_setup_token = State()      # Ввод токена ЮКасса
+    domain_setup_name = State()      # Ввод доменного имени
     
     # ========== Настройка крипто-платежей ==========
     crypto_setup_url = State()       # Ввод ссылки на товар
@@ -57,13 +58,48 @@ class AdminStates(StatesGroup):
 
     # ========== Настройка CryptoBot ==========
     cryptobot_setup_token = State()
+    cryptobot_setup_manual_address = State()
 
     # ========== Настройка xRocket ==========
     xrocket_setup_token = State()
+    xrocket_setup_manual_address = State()
 
     # ========== Настройка CrystalPay ==========
     crystalpay_setup_login = State()
     crystalpay_setup_secret = State()
+
+    # ========== Настройка Lava ==========
+    lava_setup_shop_id = State()
+    lava_setup_api_key = State()
+
+    # ========== Настройка Freekassa ==========
+    freekassa_setup_shop_id = State()
+    freekassa_setup_api_key = State()
+    freekassa_setup_secret_1 = State()
+    freekassa_setup_secret_2 = State()
+
+    # ========== Настройка Rukassa ==========
+    rukassa_setup_shop_id = State()
+    rukassa_setup_token = State()
+
+    # ========== Настройка Payok ==========
+    payok_setup_shop_id = State()
+    payok_setup_api_key = State()
+    payok_setup_secret_key = State()
+    payok_setup_api_id = State()
+
+    # ========== Настройка NowPayments ==========
+    nowpayments_setup_api_key = State()
+    nowpayments_setup_ipn_secret = State()
+
+    # ========== Настройка Robokassa ==========
+    robokassa_setup_login = State()
+    robokassa_setup_password_1 = State()
+    robokassa_setup_password_2 = State()
+
+    # ========== Настройка YooMoney ==========
+    yoomoney_setup_wallet = State()
+    yoomoney_setup_secret = State()
 
     # ========== Реферальная система ==========
     referral_menu = State()          # Главное меню реферальной системы
