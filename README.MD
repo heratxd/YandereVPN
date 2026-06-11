@@ -136,7 +136,7 @@ _Помимо всего в чате мы обсуждаем:_
 ## 👤 Автор YandereVPN
 
 **Разработчик:** [heratxd](https://yukino.my)
-<img src="vibecoder-life.png" alt="limits" width="100%">
+<img src="vibecoder-life.png" alt="limits" width="50%">
 ниче не собираю в отлчиии от автора оригинального репа, прост если понравился бот то можете закинуть 14 летнему вайбкодеру на пропитание:
 
 💰 **TON адресс:** yukinoshita.ton
