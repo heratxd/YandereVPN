@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="vpn-description.jpeg" alt="Yandere VPN" width="100%">
+  <img src="yanderebot.png" alt="Yandere VPN" width="100%">
 </p>
 
 <h1 align="center">Telegram-бот для автоматизации VPN-бизнеса на базе 3x-UI</h1>
